@@ -1,8 +1,8 @@
 # Contrato inicial de dados
 
 Este documento descreve o comportamento implementado no leitor local.
-Os testes usam dados sintéticos. A validação com o arquivo real e a política
-de snapshots ainda são etapas futuras.
+Os testes usam dados sintéticos. A validação com o arquivo real ainda é uma
+etapa futura. Há um comando separado de snapshots para preservar os bytes locais.
 
 ## Pergunta e recorte
 
@@ -130,10 +130,65 @@ Dados locais permanecem em `dados/`, ignorado pelo Git.
 Disponibilidade gratuita não é confirmação automática de licença de redistribuição.
 O projeto mantém fixture sintética versionada até esclarecer essas condições.
 
+## Snapshots locais
+
+O comando `python -m rastro.snapshot criar` preserva uma cópia exata de um arquivo
+regular local, calcula SHA-256 em blocos de 64 KiB e registra um manifesto JSON.
+Não faz download e não interpreta os registros do CSV.
+
+Cada snapshot publicado tem o diretório `dados/snapshots/<sha256>/`, contendo
+`original.csv` e `manifesto.json`. Os bytes originais não são normalizados:
+BOM, espaços e terminadores de linha participam do hash.
+
+O manifesto registra versão, hash, tamanho, data UTC da criação da cópia,
+método de coleta local e nome do arquivo original sem caminho absoluto.
+`url_origem` e `last_modified_servidor` ficam nulos porque não houve coleta HTTP.
+A data da criação não é a data da observação nem a data de publicação do INPE.
+A futura coleta HTTP deverá registrar URL e Last-Modified sem confundir a última
+modificação do recurso com sua publicação original.
+
+### Publicação, identidade e integridade
+
+- O original é lido para determinar sua identidade e lido novamente para a cópia.
+  Metadados de arquivo antes e depois de cada leitura e hashes entre as duas
+  leituras são comparados. Mudança detectada cancela o snapshot.
+- A cópia e o manifesto são escritos em pasta temporária dentro do mesmo destino,
+  sincronizados com `fsync` e publicados por renomeação da pasta completa.
+  Não há pasta final com somente metade dos arquivos.
+- Falhas normais removem a pasta temporária. Interrupção abrupta do processo pode
+  deixar pasta `.tmp-*`; ela não é um snapshot publicado e ocupa espaço da quota.
+- Uma trava POSIX impede duas criações cooperantes de escrever simultaneamente.
+  Outra criação concorrente falha com mensagem clara, sem esperar indefinidamente.
+- Mesmos bytes reutilizam o snapshot existente somente depois de conferir hash,
+  tamanho e manifesto. A data da primeira cópia é preservada; uma nova coleta
+  ainda não gera histórico separado de execuções nesta etapa.
+- Bytes diferentes geram outro diretório. Nenhuma revisão existente é sobrescrita.
+- `verificar` recalcula o hash do original e compara com o nome do diretório e o
+  manifesto. Corrupção é recusada; o comando não repara ou substitui a cópia.
+- Original e manifesto são gravados sem bits de escrita. Isso evita alterações
+  acidentais, mas não impede o proprietário do computador de mudar permissões
+  ou substituir arquivos. Não há assinatura digital nem garantia contra um
+  atacante que controle o armazenamento. Hash não prova a origem científica.
+
+### Espaço e limites
+
+A quota padrão da pasta é 3 GiB, incluindo manifestos e temporários. Antes de
+gravar outra cópia, o comando exige espaço para os novos bytes e uma reserva
+de 5 GiB livres no disco. Essa verificação não reserva espaço contra outros
+programas; uma falha de escrita cancela a operação normal sem publicar a pasta.
+A reutilização de um snapshot íntegro não exige espaço para outra cópia.
+Não há limpeza automática, compressão ou política de retenção implementada.
+
+Tamanho máximo e tempo por passagem de leitura usam o perfil `fixture` ou
+`mensal`. Cada passagem do hash tem limite cooperativo de 900 segundos;
+a operação completa pode fazer mais de uma passagem. Arquivo vazio não é aceito.
+Os limites de colunas e de linhas pertencem ao leitor CSV, não ao comando de
+snapshot. Links simbólicos de origem, destino direto e arquivos de snapshots
+são recusados. A pasta de dados deve ser controlada pelo usuário local.
+
 ## Próximo passo
 
-Criar snapshot imutável, calcular SHA-256 do original e registrar metadados
-da coleta. Depois definir tratamento de IDs repetidos por execução e validar
-o parser com o arquivo real. Hash garante identidade dos bytes; não certifica
+Definir tratamento de IDs repetidos por execução, integrar snapshot e leitura
+e validar o parser com o arquivo real. Hash garante identidade dos bytes; não certifica
 a correção científica dos dados. O cabeçalho atual, as coordenadas e os códigos
 também não comprovam a edição da malha municipal usada pela fonte.
