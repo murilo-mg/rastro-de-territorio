@@ -1,0 +1,6 @@
+id,lat,lon,data_hora_gmt,satelite,municipio,estado,pais,municipio_id,estado_id,pais_id,numero_dias_sem_chuva,precipitacao,risco_fogo,bioma,frp
+sintetico-001,-3.10,-60.02,2025-08-01 17:00:00,AQUA_M-T,MANAUS,AMAZONAS,BRASIL,1302603,13,33,5,0.0,0.4,Amazônia,12.5
+sintetico-002,-3.12,-60.04,2025-08-31 23:59:59,AQUA_M-T,MANAUS,AMAZONAS,BRASIL,1302603,13,33,-999,0.0,-999.0,Amazônia,
+sintetico-003,-3.10,-60.02,2025-08-01 05:00:00,AQUA_M-M,MANAUS,AMAZONAS,BRASIL,1302603,13,33,5,0.0,0.4,Amazônia,10.0
+sintetico-004,-1.45,-48.50,2025-08-10 17:00:00,AQUA_M-T,BELÉM,PARÁ,BRASIL,1501402,15,33,3,1.0,0.2,Amazônia,8.0
+sintetico-005,-3.10,-60.02,2025-09-01 00:00:00,AQUA_M-T,MANAUS,AMAZONAS,BRASIL,1302603,13,33,5,0.0,0.4,Amazônia,11.0

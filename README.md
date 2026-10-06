@@ -1,0 +1,85 @@
+# Rastro de Território
+
+Um caderno interativo para explorar dados ambientais do Amazonas e explicar
+a origem e as limitações de cada resultado. Projeto em desenvolvimento.
+
+## Primeira pergunta
+
+Como as detecções do satélite de referência se distribuíram pelo Amazonas
+em agosto de 2025, e quais limitações devemos considerar ao interpretar esses números?
+
+O primeiro recorte usa o código de estado `13`, o satélite exato `AQUA_M-T`
+e o intervalo UTC de `2025-08-01 00:00:00` até antes de `2025-09-01 00:00:00`.
+Contar detecções não equivale a contar incêndios distintos ou medir área queimada.
+
+## Estado atual
+
+Primeira etapa: leitor CSV local com validação básica, recorte e testes offline.
+Ainda não há banco, API, mapa ou versão pública. Nenhum dado real está incluído.
+O arquivo `testes/fixtures/focos_sinteticos.csv` contém cinco observações inventadas,
+inclusive seus identificadores. Os exemplos não representam eventos reais.
+
+## Executar
+
+Requer Python 3.12 ou superior. Esta etapa usa somente a biblioteca padrão;
+não há dependências para instalar.
+
+```bash
+python src/rastro/leitor.py testes/fixtures/focos_sinteticos.csv
+```
+
+Resultado esperado:
+
+```text
+lidas: 5
+selecionadas: 2
+fora_do_recorte: 3
+rejeitadas: 0
+problemas_opcionais: 0
+```
+
+## Testar
+
+Na raiz do projeto:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s testes -p 'test_*.py' -v
+```
+
+## Regras desta etapa
+
+- Leitura linha a linha; o resumo não acumula todas as observações na memória.
+- Validação do cabeçalho, ID não vazio, satélite, código de estado, data e coordenadas.
+- Coordenadas com espaços são aparadas e lidas como números decimais finitos.
+- A coluna `data_hora_gmt` sem offset é interpretada em UTC; offsets explícitos
+  são convertidos para UTC. Data sem hora não é aceita.
+- `-999`, incluindo variantes decimais, vira `None` nos três campos meteorológicos.
+- Campo opcional vazio vira `None`. Zero permanece zero.
+- Campo opcional inválido vira `None` e gera um problema associado ao campo;
+  a observação continua selecionada se seus campos essenciais forem válidos.
+- Dias sem chuva: inteiro não negativo; precipitação e FRP: não negativos;
+  risco de fogo: entre zero e um. Esses limites ainda precisam ser conferidos
+  com a documentação e o arquivo real antes da integração.
+- As categorias são exclusivas: lidas = selecionadas + fora do recorte + rejeitadas.
+  Campos essenciais inválidos são rejeitados antes de avaliar o recorte.
+  Campos opcionais só são verificados nas observações selecionadas.
+- O resumo conta problemas opcionais por campo, não por observação.
+
+## Limitações e próximas etapas
+
+O leitor ainda não valida o formato UUID dos IDs, não detecta IDs repetidos,
+não gera snapshots ou hashes e não limita o tamanho total dos arquivos.
+Erros estruturais de CSV interrompem a execução, sem resumo parcial.
+Linhas vazias são ignoradas pela biblioteca CSV.
+
+Antes de usar o arquivo nacional real: registrar o contrato de dados, adicionar
+limites de leitura, definir identidade e duplicatas, gerar snapshot e verificar
+o hash. Depois entram banco, API e interface.
+
+Os arquivos reais ficarão em `dados/`, fora do Git. Fonte planejada:
+[Programa Queimadas do INPE](https://data.inpe.br/queimadas/dados-abertos/).
+As condições de redistribuição dos dados reais serão verificadas separadamente.
+
+## Desenvolvimento
+
+Murilo da Mota Gonçalves — Ciência da Computação, UFAM.
