@@ -1,46 +1,81 @@
 # Rastro de Território
 
-Um caderno interativo para explorar dados ambientais do Amazonas e explicar
-a origem e as limitações de cada resultado. Projeto em desenvolvimento.
+Projeto de um caderno interativo de dados ambientais do Amazonas, desenvolvido
+por Murilo da Mota Gonçalves, estudante de Ciência da Computação na UFAM.
+O objetivo é tornar os resultados exploráveis e explicar sua origem e suas
+limitações. O orçamento é zero; a etapa atual roda localmente, sem serviços pagos.
 
-## Primeira pergunta
+## Pergunta inicial
 
-Como as detecções do satélite de referência se distribuíram pelo Amazonas
-em agosto de 2025, e quais limitações devemos considerar ao interpretar esses números?
+> Como as detecções do satélite de referência se distribuíram pelo Amazonas em
+> agosto de 2025, e quais limitações devemos considerar ao interpretar esses números?
 
-O primeiro recorte usa o código de estado `13`, o satélite exato `AQUA_M-T`
-e o intervalo UTC de `2025-08-01 00:00:00` até antes de `2025-09-01 00:00:00`.
-Contar detecções não equivale a contar incêndios distintos ou medir área queimada.
+O recorte implementado seleciona `estado_id = 13`, satélite exatamente
+`AQUA_M-T` e datas UTC de `2025-08-01T00:00:00Z` (inclusive) até
+`2025-09-01T00:00:00Z` (exclusive). Detecções não equivalem a incêndios distintos
+nem a área queimada. A pergunta ainda não foi respondida com dados reais.
 
 ## Estado atual
 
-Etapa atual: leitor CSV local com validação básica, recorte, limites de entrada,
-snapshots identificados por hash e testes offline.
-As regras estão em [docs/DADOS.md](docs/DADOS.md).
-Ainda não há banco, API, mapa ou versão pública. Nenhum dado real está incluído.
-O arquivo `testes/fixtures/focos_sinteticos.csv` contém cinco observações inventadas,
-inclusive seus identificadores. Os exemplos não representam eventos reais.
+Funcionam atualmente:
 
-## Executar
+- Leitor de CSV local com validação, recorte fixo, limites de leitura e resumo
+  de linhas selecionadas, fora do recorte e rejeitadas.
+- Criação, reutilização e verificação de snapshots locais por SHA-256.
+- API Python que verifica o snapshot, processa o CSV e recusa IDs repetidos
+  entre as linhas selecionadas, usando SQLite temporário.
+- Manifesto de execução retornado em memória e hash determinístico desse
+  manifesto, incluindo identidade da entrada, perfil, limites e contagens.
+- Testes offline com dados sintéticos e workflow de testes no GitHub Actions.
 
-Requer Python 3.12 ou superior. Esta etapa usa somente a biblioteca padrão;
-não há dependências para instalar.
-Os comandos de snapshot desta etapa usam trava de arquivo POSIX e são
-implementados e testados para Linux, incluindo o runner Ubuntu do GitHub Actions.
+A interface interativa, mapas, agregações por município ou dia, banco persistente,
+API web, coleta HTTP e hospedagem permanecem planejados. O SQLite atual serve
+somente ao controle temporário de IDs. Não há dependência de pandas, serviço
+de banco ou biblioteca de mapas.
+
+O [contrato de dados](docs/DADOS.md) detalha validação, identidade, limites,
+procedência e interpretação. O código está em [src/rastro](src/rastro),
+e os testes em [testes](testes).
+
+## Requisitos e instalação
+
+Use Python 3.12, versão configurada no CI, e Linux para o fluxo completo.
+O módulo de snapshots depende de `fcntl` e de travas POSIX; não há suporte
+implementado para Windows. O Python precisa incluir o módulo `sqlite3`.
+Todas as dependências são da biblioteca padrão: não há pacote para instalar
+com `pip`, `requirements.txt` ou configuração de instalação do projeto.
+
+Para uma cópia nova:
 
 ```bash
-python src/rastro/leitor.py testes/fixtures/focos_sinteticos.csv
+git clone https://github.com/murilo-mg/rastro-de-territorio.git
+cd rastro-de-territorio
 ```
 
-O perfil padrão `fixture` aceita até 5 MiB e 20 mil linhas após o cabeçalho.
-O perfil `mensal` aceita até 512 MiB e 5 milhões de linhas. Para testar a seleção
-do perfil com o mesmo exemplo sintético:
+Na cópia local indicada, comece por:
 
 ```bash
-python src/rastro/leitor.py testes/fixtures/focos_sinteticos.csv --perfil mensal
+cd ~/Documentos/rastro-de-territorio
+python3 --version
+python3 -c "import csv, decimal, fcntl, hashlib, json, sqlite3; print('dependências disponíveis')"
 ```
 
-Resultado esperado:
+Execute os comandos abaixo na raiz do repositório, na revisão que contém
+[src/rastro/execucao.py](src/rastro/execucao.py). `PYTHONPATH=src` permite
+importar os módulos sem instalar um pacote. Uma cópia de outra branch pode
+não conter a mesma implementação; registre a revisão usada.
+
+## Ler a fixture sintética
+
+A [fixture](testes/fixtures/focos_sinteticos.csv) contém cinco observações
+inventadas, inclusive os IDs. Seus resultados não descrevem eventos reais.
+
+```bash
+python3 src/rastro/leitor.py testes/fixtures/focos_sinteticos.csv
+python3 src/rastro/leitor.py testes/fixtures/focos_sinteticos.csv --perfil mensal
+```
+
+Ambos os comandos produzem:
 
 ```text
 lidas: 5
@@ -50,68 +85,130 @@ rejeitadas: 0
 problemas_opcionais: 0
 ```
 
-## Guardar e conferir uma cópia do arquivo
+Entram `sintetico-001` e `sintetico-002`. As outras linhas têm satélite diferente,
+estado diferente ou data no limite final excluído. Este comando simples não
+controla repetições de IDs. Para isso, use a execução sobre snapshot abaixo.
+
+O perfil padrão `fixture` permite 5 MiB e 20.000 linhas físicas após o cabeçalho;
+`mensal` permite 512 MiB e 5.000.000. Ambos têm outros
+[limites de leitura](docs/DADOS.md#limites-implementados). Selecionar `mensal`
+altera os limites, sem alterar estado, satélite ou período.
+
+## Preservar e verificar a entrada
 
 ```bash
-PYTHONPATH=src python -m rastro.snapshot criar testes/fixtures/focos_sinteticos.csv
+PYTHONPATH=src python3 -m rastro.snapshot criar testes/fixtures/focos_sinteticos.csv
+PYTHONPATH=src python3 -m rastro.snapshot verificar dados/snapshots/82d677fe686df80c69a5dffab3988446c640580f01cdc160a7c489101032e23f
 ```
 
-O comando guarda `original.csv` e `manifesto.json` em `dados/snapshots/<sha256>/`.
-A repetição com os mesmos bytes verifica e reutiliza a cópia existente.
-Para conferir novamente, substitua `<sha256>` pelo hash exibido:
+Na validação desta documentação, a cópia já existia e foi reutilizada:
+
+```text
+snapshot: reutilizado
+sha256: 82d677fe686df80c69a5dffab3988446c640580f01cdc160a7c489101032e23f
+bytes: 731
+diretorio: dados/snapshots/82d677fe686df80c69a5dffab3988446c640580f01cdc160a7c489101032e23f
+```
+
+Na primeira criação, a primeira linha informa `snapshot: criado`; na verificação,
+`snapshot: integridade conferida`. Hash e tamanho acima correspondem aos bytes
+da fixture versionada. Para outra entrada, use o diretório exibido pelo comando.
+
+`criar` aceita `--destino dados/snapshots` e `--perfil mensal`; `verificar`
+também aceita `--perfil mensal`. Para arquivos acima de 5 MiB, use esse perfil
+na criação, na verificação e na execução.
+
+A pasta de snapshots tem quota padrão de 3 GiB e exige uma reserva de 5 GiB
+livres no disco ao criar uma nova cópia, mesmo para uma fixture pequena.
+Não há exclusão automática. Veja as [regras de armazenamento](docs/DADOS.md#snapshots-locais).
+
+## Reproduzir o processamento
+
+`rastro.execucao` oferece `executar_snapshot`; não tem uma interface de linha
+de comando. O exemplo completo abaixo chama a API e salva o resultado em
+`dados/execucoes/`, fora do Git. A gravação e o registro de revisão e versão
+do Python são feitos pelo exemplo, não automaticamente pela API.
 
 ```bash
-PYTHONPATH=src python -m rastro.snapshot verificar dados/snapshots/<sha256>
+PYTHONPATH=src python3 - <<'PY'
+import json
+import platform
+import subprocess
+from pathlib import Path
+
+from rastro.execucao import executar_snapshot
+
+diretorio = Path("dados/snapshots/82d677fe686df80c69a5dffab3988446c640580f01cdc160a7c489101032e23f")
+resultado = executar_snapshot(diretorio, perfil="fixture")
+registro = {
+    "execucao_sha256": resultado.execucao_sha256,
+    "manifesto": resultado.manifesto,
+    "contexto": {
+        "revisao_codigo": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True
+        ).strip(),
+        "python": platform.python_version(),
+    },
+}
+destino = Path("dados/execucoes") / (resultado.execucao_sha256 + ".json")
+destino.parent.mkdir(parents=True, exist_ok=True)
+destino.write_text(json.dumps(registro, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+print("execucao_sha256:", resultado.execucao_sha256)
+print("ids_selecionados_unicos:", resultado.ids_selecionados_unicos)
+for nome, valor in resultado.resumo.items():
+    print(f"{nome}: {valor}")
+print("registro:", destino)
+PY
 ```
 
-Arquivos de snapshot ficam fora do Git. A quota local padrão é 3 GiB, com
-reserva de 5 GiB livres no disco. Não há exclusão automática de snapshots.
-O hash comprova identidade dos bytes; não valida a interpretação científica.
+Saída obtida com a fixture e o perfil `fixture`:
 
-## Testar
+```text
+execucao_sha256: 4fbc590deb678843e166398c7ff4f4c3c718d3e236cf602026e0b0b2f155152c
+ids_selecionados_unicos: 2
+lidas: 5
+selecionadas: 2
+fora_do_recorte: 3
+rejeitadas: 0
+problemas_opcionais: 0
+registro: dados/execucoes/4fbc590deb678843e166398c7ff4f4c3c718d3e236cf602026e0b0b2f155152c.json
+```
 
-Na raiz do projeto:
+Reexecutar o exemplo mantém esse hash e regrava o registro no mesmo caminho.
+Guarde os dois arquivos do snapshot, o registro de execução, o código da revisão
+usada e eventuais alterações locais de código. O manifesto não registra commit,
+versão do Python ou os valores explícitos do recorte; `versao_regras = 1`
+precisa ser interpretada junto ao código. Não existe comando de importação ou
+verificação de um manifesto de execução salvo. Veja
+[identidade e reprodução](docs/DADOS.md#execução-e-manifesto).
+
+O hash do snapshot identifica os bytes do CSV; o da execução identifica o
+manifesto canônico. Nenhum deles certifica a procedência ou a validade científica
+do resultado. Um ID repetido interrompe a execução, sem resultado completo;
+não é removido silenciosamente nem contado em uma quarta categoria.
+
+## Testes
 
 ```bash
-PYTHONPATH=src python -m unittest discover -s testes -p 'test_*.py' -v
+PYTHONPATH=src python3 -m unittest discover -s testes -p 'test_*.py' -v
 ```
 
-## Regras desta etapa
+Na revisão desta documentação, os 70 testes passaram com Python 3.12.3 no Linux.
+O [workflow](.github/workflows/testes.yml) executa a mesma descoberta de testes
+em pushes e pull requests, com Python 3.12 no Ubuntu e limite de cinco minutos
+para o job. Os testes não baixam dados ambientais.
 
-- Leitura linha a linha; o resumo não acumula todas as observações na memória.
-- Limites de bytes totais, linha física, campo UTF-8, colunas, linhas e tempo.
-- Validação do cabeçalho, ID não vazio, satélite, código de estado, data e coordenadas.
-- Coordenadas com espaços são aparadas e lidas como números decimais finitos.
-- A coluna `data_hora_gmt` sem offset é interpretada em UTC; offsets explícitos
-  são convertidos para UTC. Data sem hora não é aceita.
-- `-999`, incluindo variantes decimais, vira `None` nos três campos meteorológicos.
-- Campo opcional vazio vira `None`. Zero permanece zero.
-- Campo opcional inválido vira `None` e gera um problema associado ao campo;
-  a observação continua selecionada se seus campos essenciais forem válidos.
-- Dias sem chuva: inteiro não negativo; precipitação e FRP: não negativos;
-  risco de fogo: entre zero e um; dias sem chuva também precisa caber em inteiro
-  de 32 bits. Os limites meteorológicos ainda precisam ser conferidos
-  com a documentação e o arquivo real antes da integração.
-- As categorias são exclusivas: lidas = selecionadas + fora do recorte + rejeitadas.
-  Campos essenciais inválidos são rejeitados antes de avaliar o recorte.
-  Campos opcionais só são verificados nas observações selecionadas.
-- O resumo conta problemas opcionais por campo, não por observação.
+## Limitações e próximos passos
 
-## Limitações e próximas etapas
+O leitor não valida UUID, estabilidade de IDs, CRS ou coerência territorial das
+coordenadas. A assinatura usada para classificar repetições tem
+[limitações conhecidas com decimais](docs/DADOS.md#ids-repetidos-e-conflitos).
+Não há medição de RAM ou desempenho com o arquivo nacional, quota para o SQLite
+temporário nem controle global de execuções concorrentes.
 
-O leitor ainda não valida o formato UUID dos IDs e não detecta IDs repetidos.
-O comando de snapshots é separado do leitor e não valida o conteúdo do CSV.
-Erros estruturais de CSV interrompem a execução, sem resumo parcial.
-Linhas vazias são ignoradas pela biblioteca CSV.
-
-Antes de usar o arquivo nacional real: conferir o contrato documentado com a fonte,
-definir identidade e duplicatas por execução e testar a integração do snapshot
-com o leitor. Depois entram banco, API e interface.
-
-Os arquivos reais ficarão em `dados/`, fora do Git. Fonte planejada:
-[Programa Queimadas do INPE](https://data.inpe.br/queimadas/dados-abertos/).
-As condições de redistribuição dos dados reais serão verificadas separadamente.
-
-## Desenvolvimento
-
-Murilo da Mota Gonçalves — Ciência da Computação, UFAM.
+Os próximos passos são revisar essas limitações de identidade, conferir o
+contrato com o arquivo real e a metodologia da fonte, registrar melhor a revisão
+das regras e só então produzir agregações e a interface interativa. As condições
+de redistribuição de dados reais ainda precisam ser confirmadas. A
+[procedência e as referências consultadas](docs/DADOS.md#procedência-e-condições-de-uso)
+estão centralizadas no contrato de dados.
