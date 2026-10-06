@@ -14,7 +14,8 @@ Contar detecções não equivale a contar incêndios distintos ou medir área qu
 
 ## Estado atual
 
-Primeira etapa: leitor CSV local com validação básica, recorte e testes offline.
+Etapa atual: leitor CSV local com validação básica, recorte, limites de entrada
+e testes offline. As regras estão em [docs/DADOS.md](docs/DADOS.md).
 Ainda não há banco, API, mapa ou versão pública. Nenhum dado real está incluído.
 O arquivo `testes/fixtures/focos_sinteticos.csv` contém cinco observações inventadas,
 inclusive seus identificadores. Os exemplos não representam eventos reais.
@@ -26,6 +27,14 @@ não há dependências para instalar.
 
 ```bash
 python src/rastro/leitor.py testes/fixtures/focos_sinteticos.csv
+```
+
+O perfil padrão `fixture` aceita até 5 MiB e 20 mil linhas após o cabeçalho.
+O perfil `mensal` aceita até 512 MiB e 5 milhões de linhas. Para testar a seleção
+do perfil com o mesmo exemplo sintético:
+
+```bash
+python src/rastro/leitor.py testes/fixtures/focos_sinteticos.csv --perfil mensal
 ```
 
 Resultado esperado:
@@ -49,6 +58,7 @@ PYTHONPATH=src python -m unittest discover -s testes -p 'test_*.py' -v
 ## Regras desta etapa
 
 - Leitura linha a linha; o resumo não acumula todas as observações na memória.
+- Limites de bytes totais, linha física, campo UTF-8, colunas, linhas e tempo.
 - Validação do cabeçalho, ID não vazio, satélite, código de estado, data e coordenadas.
 - Coordenadas com espaços são aparadas e lidas como números decimais finitos.
 - A coluna `data_hora_gmt` sem offset é interpretada em UTC; offsets explícitos
@@ -58,7 +68,8 @@ PYTHONPATH=src python -m unittest discover -s testes -p 'test_*.py' -v
 - Campo opcional inválido vira `None` e gera um problema associado ao campo;
   a observação continua selecionada se seus campos essenciais forem válidos.
 - Dias sem chuva: inteiro não negativo; precipitação e FRP: não negativos;
-  risco de fogo: entre zero e um. Esses limites ainda precisam ser conferidos
+  risco de fogo: entre zero e um; dias sem chuva também precisa caber em inteiro
+  de 32 bits. Os limites meteorológicos ainda precisam ser conferidos
   com a documentação e o arquivo real antes da integração.
 - As categorias são exclusivas: lidas = selecionadas + fora do recorte + rejeitadas.
   Campos essenciais inválidos são rejeitados antes de avaliar o recorte.
@@ -67,13 +78,13 @@ PYTHONPATH=src python -m unittest discover -s testes -p 'test_*.py' -v
 
 ## Limitações e próximas etapas
 
-O leitor ainda não valida o formato UUID dos IDs, não detecta IDs repetidos,
-não gera snapshots ou hashes e não limita o tamanho total dos arquivos.
+O leitor ainda não valida o formato UUID dos IDs, não detecta IDs repetidos
+e não gera snapshots ou hashes.
 Erros estruturais de CSV interrompem a execução, sem resumo parcial.
 Linhas vazias são ignoradas pela biblioteca CSV.
 
-Antes de usar o arquivo nacional real: registrar o contrato de dados, adicionar
-limites de leitura, definir identidade e duplicatas, gerar snapshot e verificar
+Antes de usar o arquivo nacional real: conferir o contrato documentado com a fonte,
+definir identidade e duplicatas, gerar snapshot e verificar
 o hash. Depois entram banco, API e interface.
 
 Os arquivos reais ficarão em `dados/`, fora do Git. Fonte planejada:
