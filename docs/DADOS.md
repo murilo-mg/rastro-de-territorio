@@ -354,8 +354,9 @@ O manifesto inclui o recorte explícito, mas não commit, versão do Python ou
 hash do código. A versão das regras é uma constante manual. Assim, igualdade
 de `execucao_sha256` não comprova que dois códigos diferentes executaram o
 mesmo processamento nem certifica igualdade de todos os focos interpretados.
-A comparação de exportações é feita reexecutando e conferindo os três
-artefatos determinísticos; não existe importação independente de um manifesto salvo.
+A comparação após reexecução confere os três artefatos determinísticos.
+Também existe leitura independente por `verificar_resultado(diretorio)`:
+ela valida os arquivos exportados sem reler ou reexecutar o snapshot.
 
 Identidade dos bytes permite conferir a entrada preservada; reprodução exige
 entrada, código, parâmetros e ambiente; validade científica exige ainda
@@ -395,6 +396,65 @@ As versões anteriores dos manifestos continuam sendo registros históricos.
 Preserve-as e use a revisão correspondente para reproduzi-las. O snapshot
 não muda de formato; os novos resultados ficam em outro hash de execução.
 
+## Verificação independente e caderno local
+
+`rastro.resultado.verificar_resultado()` aceita exatamente `manifesto.json`,
+`por_dia.csv`, `por_municipio.csv` e `contexto.json`. A pasta pode ter outro
+nome: a identidade é lida do manifesto. São aceitos apenas manifesto 2,
+regras 3, agregações 1, recorte atual e perfis com os limites implementados.
+Versões futuras ou formatos históricos são recusados explicitamente.
+
+O verificador confere estrutura, tipos, limites das contagens, SHA-256
+canônico, igualdade entre IDs e selecionadas, partição das linhas lidas,
+31 datas ordenadas, somas diárias e municipais, códigos únicos e ordenados,
+nomes, ausências e problemas por campo. Reconstitui os três artefatos
+determinísticos e exige igualdade byte a byte. Até uma mudança de formatação
+nos JSON/CSVs determinísticos é recusada. O contexto recebe validação de
+estrutura e tipos, mas continua fora do hash e sem autenticação.
+
+Cada artefato determinístico tem limite de 16 MiB para importação; o contexto,
+8 KiB. São recusados arquivos não regulares, links simbólicos nos arquivos
+e no diretório final, chaves JSON repetidas e constantes como `NaN` e
+`Infinity`. A leitura usa descritores com `O_NOFOLLOW`, `O_NONBLOCK` e `fstat`
+em Linux. Isso não protege contra troca de diretórios ancestrais ou escrita
+externa concorrente. Os arquivos importados não são modificados.
+
+Uma adulteração coerente de manifesto, hash e CSVs pode passar: a conferência
+é de consistência interna, não de autenticidade. Reproduzir continua exigindo
+snapshot, código, parâmetros e ambiente. O verificador tampouco permite
+validar a associação de cada observação ao município sem reprocessar a entrada.
+
+`rastro.caderno.gerar_caderno()` verifica a exportação e gera um HTML completo
+fora da pasta original. A apresentação não altera o manifesto, o hash da
+execução ou as versões das regras. O formato visual tem versão própria,
+inicialmente 1. Mesmos quatro arquivos e gerador produzem os mesmos bytes;
+mudanças de contexto alteram o HTML mesmo sem alterar o hash da execução.
+
+A saída usa arquivo temporário no destino, `fsync` do arquivo e criação de
+hard link com `os.link`, sem sobrescrever um destino criado por outro processo.
+O temporário é removido em falhas ordinárias. Uma publicação concorrente pode
+falhar com código 2; execute novamente para conferir/reutilizar. Arquivos
+existentes idênticos são reutilizados; divergentes exigem outro caminho.
+O sistema de arquivos precisa suportar hard links. Não há `fsync` do diretório,
+quota de HTML ou garantia após queda de energia. Interrupções abruptas podem
+deixar `.rastro-caderno-*`.
+
+O HTML carrega todos os grupos em memória, com limite de 10.000 grupos,
+e contém a tabela completa também sem JavaScript. Há busca por código/nome
+e ordenação, série diária com origem em zero e tabela de valores exatos.
+O gráfico diário e os indicadores gerais não mudam com a busca municipal:
+as tabelas exportadas são marginais e não contêm o cruzamento município × dia.
+Percentuais são participações nas detecções selecionadas; não são taxas por
+área ou população. Nomes não são convertidos em geometrias ou validados contra
+cadastro territorial. O grupo sem código não representa um único município.
+
+Nomes são escapados no HTML e no JSON embutido; a interação escreve texto
+com `textContent`. Uma CSP permite apenas o script e estilo gerados por hash
+e bloqueia conexões da página. O caderno não usa dependências externas,
+armazenamento de navegação ou servidor. Isso não autentica um HTML alterado
+depois de gerado. A fixture conhecida é reconhecida pelo hash; outras entradas
+sintéticas não são detectadas automaticamente. Detalhes em [CADERNO.md](CADERNO.md).
+
 ## Procedência e condições de uso
 
 As referências oficiais foram consultadas inicialmente em 6 de outubro de 2026.
@@ -427,8 +487,10 @@ snapshots, manifestos e registros salvos pelo exemplo. Também exclui `.venv/`,
 do sistema, fora dos artefatos versionados; a fixture permanece no Git.
 
 O arquivo real já foi processado com o recorte e os limites documentados.
-As agregações por dia e código municipal e a exportação local estão implementadas.
+As agregações por dia e código municipal, exportação, verificação independente
+e interface HTML local estão implementadas.
 Para avançar na análise, falta aprofundar a conferência de metodologia e unidades
 com a fonte, avaliar a estabilidade dos IDs e medir recursos e desempenho de
-forma sistemática. Persistência em banco e interface ainda são etapas futuras.
+forma sistemática. Persistência em banco, cruzamento município × dia, mapa e
+interface web hospedada ainda são etapas futuras.
 O comportamento atual não determina a edição da malha municipal usada pela fonte.
