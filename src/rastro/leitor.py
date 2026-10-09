@@ -21,6 +21,8 @@ CAMPOS = (
 )
 INICIO = datetime(2025, 8, 1, tzinfo=timezone.utc)
 FIM = datetime(2025, 9, 1, tzinfo=timezone.utc)
+ESTADO_ID = 13
+SATELITE = "AQUA_M-T"
 FORMATO_DATA = re.compile(
     r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}"
     r"(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?"
@@ -68,6 +70,8 @@ class Foco:
     precipitacao: Decimal | None
     risco_fogo: Decimal | None
     frp: Decimal | None
+    municipio_id: str | None = None
+    municipio: str | None = None
 
 
 @dataclass(frozen=True)
@@ -137,11 +141,18 @@ def interpretar(linha, numero_linha):
     except (ValueError, OverflowError) as erro:
         return ResultadoLinha(numero_linha, "rejeitada", problemas=(str(erro),))
 
-    if not (valores["satelite"] == "AQUA_M-T" and estado_id == 13
+    if not (valores["satelite"] == SATELITE and estado_id == ESTADO_ID
             and INICIO <= observado_em < FIM):
         return ResultadoLinha(numero_linha, "fora_do_recorte")
 
     problemas = []
+    municipio_id = valores["municipio_id"] or None
+    if municipio_id is not None and (
+        not re.fullmatch(r"[0-9]{7}", municipio_id)
+        or municipio_id[:2] != str(estado_id)
+    ):
+        problemas.append("municipio_id")
+        municipio_id = None
     foco = Foco(
         source_id=valores["id"], latitude=latitude, longitude=longitude,
         observado_em=observado_em, satelite=valores["satelite"],
@@ -154,6 +165,8 @@ def interpretar(linha, numero_linha):
         risco_fogo=opcional(valores["risco_fogo"], "risco_fogo",
                            problemas, sentinela=True, maximo=1),
         frp=opcional(valores["frp"], "frp", problemas),
+        municipio_id=municipio_id,
+        municipio=valores["municipio"] or None,
     )
     return ResultadoLinha(numero_linha, "selecionada", foco, tuple(problemas))
 

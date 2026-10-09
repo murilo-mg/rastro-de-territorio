@@ -33,9 +33,16 @@ class TestManifestoExecucao(unittest.TestCase):
 
         self.assertEqual(
             resultado.manifesto["versao_manifesto_execucao"],
-            1,
+            2,
         )
-        self.assertEqual(resultado.manifesto["versao_regras"], 2)
+        self.assertEqual(resultado.manifesto["versao_regras"], 3)
+        self.assertEqual(resultado.manifesto["recorte"], {
+            "estado_id": 13, "satelite": "AQUA_M-T",
+            "inicio_inclusive": "2025-08-01T00:00:00+00:00",
+            "fim_exclusive": "2025-09-01T00:00:00+00:00",
+            "fuso_agregacao": "UTC",
+        })
+        self.assertEqual(resultado.manifesto["resultado"]["agregacoes"], resultado.agregacoes)
 
         self.assertEqual(
             resultado.manifesto["snapshot"],
@@ -185,6 +192,14 @@ class TestManifestoExecucao(unittest.TestCase):
         manifesto = json.loads(json.dumps(resultado.manifesto))
         manifesto["resultado"]["resumo"]["selecionadas"] += 1
         casos.append(("resultado", manifesto))
+
+        manifesto = json.loads(json.dumps(resultado.manifesto))
+        manifesto["resultado"]["agregacoes"]["por_dia_utc"][0]["deteccoes"] += 1
+        casos.append(("agregacoes", manifesto))
+
+        manifesto = json.loads(json.dumps(resultado.manifesto))
+        manifesto["recorte"]["fuso_agregacao"] = "America/Manaus"
+        casos.append(("recorte", manifesto))
 
         for nome, alterado in casos:
             with self.subTest(campo=nome):

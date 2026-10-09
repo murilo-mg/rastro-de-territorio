@@ -8,7 +8,8 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-from .leitor import Foco, PERFIS, ler_csv
+from .agregacoes import AcumuladorAgregacoes
+from .leitor import Foco, PERFIS, ler_csv, ESTADO_ID, SATELITE, INICIO, FIM
 from .snapshot import verificar_snapshot
 
 
@@ -24,6 +25,7 @@ class ResultadoExecucao:
     resumo: dict[str, int]
     execucao_sha256: str
     manifesto: dict[str, object]
+    agregacoes: dict[str, object]
 
 
 def _decimal_canonico(valor):
@@ -70,6 +72,8 @@ def _assinatura_foco(foco: Foco) -> bytes:
         _decimal_canonico(foco.precipitacao),
         _decimal_canonico(foco.risco_fogo),
         _decimal_canonico(foco.frp),
+        foco.municipio_id,
+        foco.municipio,
     ]
     serializado = json.dumps(
         conteudo,
@@ -87,10 +91,18 @@ def _criar_manifesto_execucao(
     limites,
     ids_selecionados_unicos,
     resumo,
+    agregacoes,
 ):
     return {
-        "versao_manifesto_execucao": 1,
-        "versao_regras": 2,
+        "versao_manifesto_execucao": 2,
+        "versao_regras": 3,
+        "recorte": {
+            "estado_id": ESTADO_ID,
+            "satelite": SATELITE,
+            "inicio_inclusive": INICIO.isoformat(),
+            "fim_exclusive": FIM.isoformat(),
+            "fuso_agregacao": "UTC",
+        },
         "snapshot": {
             "sha256": snapshot.sha256,
             "bytes": snapshot.bytes,
@@ -112,6 +124,7 @@ def _criar_manifesto_execucao(
         "resultado": {
             "ids_selecionados_unicos": ids_selecionados_unicos,
             "resumo": dict(resumo),
+            "agregacoes": agregacoes,
         },
     }
 
@@ -152,6 +165,7 @@ def executar_snapshot(diretorio, *, perfil="fixture"):
                     assinatura BLOB NOT NULL
                 ) WITHOUT ROWID
             """)
+            acumulador = AcumuladorAgregacoes(conexao)
 
             for resultado in ler_csv(original, limites=limites):
                 contagens["lidas"] += 1
@@ -199,6 +213,9 @@ def executar_snapshot(diretorio, *, perfil="fixture"):
                     ) from None
 
                 ids_selecionados_unicos += 1
+                acumulador.adicionar(foco, resultado.problemas)
+
+            agregacoes = acumulador.concluir(ids_selecionados_unicos)
 
     resumo = {
         "lidas": contagens["lidas"],
@@ -214,6 +231,7 @@ def executar_snapshot(diretorio, *, perfil="fixture"):
         limites=limites,
         ids_selecionados_unicos=ids_selecionados_unicos,
         resumo=resumo,
+        agregacoes=agregacoes,
     )
     execucao_sha256 = _hash_manifesto(manifesto)
 
@@ -224,4 +242,5 @@ def executar_snapshot(diretorio, *, perfil="fixture"):
         resumo=resumo,
         execucao_sha256=execucao_sha256,
         manifesto=manifesto,
+        agregacoes=agregacoes,
     )

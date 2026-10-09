@@ -18,6 +18,34 @@ def exemplo(**mudancas):
 
 
 class TestLeitor(unittest.TestCase):
+    def test_preserva_codigo_e_nome_municipais(self):
+        resultado = interpretar(exemplo(municipio_id=" 1302603 ", municipio="  Manaus "), 2)
+        self.assertEqual(resultado.foco.municipio_id, "1302603")
+        self.assertEqual(resultado.foco.municipio, "Manaus")
+        self.assertEqual(resultado.problemas, ())
+
+    def test_codigo_municipal_invalido_preserva_deteccao(self):
+        for codigo in ("abc", "130260", "13026030", "1501402", "１３０２６０３", "1302603.0"):
+            with self.subTest(codigo=codigo):
+                resultado = interpretar(exemplo(municipio_id=codigo), 2)
+                self.assertEqual(resultado.categoria, "selecionada")
+                self.assertIsNone(resultado.foco.municipio_id)
+                self.assertEqual(resultado.foco.municipio, "MANAUS")
+                self.assertEqual(resultado.problemas, ("municipio_id",))
+
+    def test_municipio_ausente_nao_vira_codigo_inferido(self):
+        resultado = interpretar(exemplo(municipio_id="", municipio="MANAUS"), 2)
+        self.assertIsNone(resultado.foco.municipio_id)
+        self.assertEqual(resultado.problemas, ())
+        sem_nome = interpretar(exemplo(municipio="  "), 2)
+        self.assertIsNone(sem_nome.foco.municipio)
+        self.assertEqual(sem_nome.foco.municipio_id, "1302603")
+
+    def test_municipio_fora_do_recorte_nao_e_avaliado(self):
+        resultado = interpretar(exemplo(satelite="GOES-19", municipio_id="abc"), 2)
+        self.assertEqual(resultado.categoria, "fora_do_recorte")
+        self.assertEqual(resultado.problemas, ())
+
     def test_recorte_e_contagens(self):
         self.assertEqual(resumir(FIXTURE), {
             "lidas": 5, "selecionadas": 2, "fora_do_recorte": 3,

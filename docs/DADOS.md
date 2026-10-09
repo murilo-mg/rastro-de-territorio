@@ -38,7 +38,8 @@ fogo. Essas distinções estão na [FAQ do INPE, itens 9 a 11](https://data.inpe
 A escolha de `AQUA_M-T` segue a referência descrita no item 7 da mesma FAQ.
 A página contém textos históricos: sua consulta não valida o conteúdo do CSV
 de agosto de 2025, a cobertura daquele período ou a malha territorial usada.
-O projeto ainda não calcula uma distribuição espacial com dados reais.
+O projeto calcula agregações por código municipal informado na fonte;
+a distribuição territorial ainda não foi validada contra uma malha oficial.
 
 ## Formato aceito
 
@@ -65,11 +66,21 @@ são essenciais. `id` vira `source_id` no objeto interpretado. Identificador
 e satélite precisam ser não vazios; estado deve ser inteiro positivo; data
 e coordenadas devem ser válidas. Falhas nesses campos rejeitam a linha.
 
-`municipio`, `estado`, `pais`, `municipio_id`, `pais_id` e `bioma` precisam
-existir como colunas, mas seus valores não são validados nem preservados em
-`Foco`. Não há agregação municipal ou conferência do país nesta etapa.
+`estado`, `pais`, `pais_id` e `bioma` precisam existir como colunas, mas seus
+valores não são validados nem preservados em `Foco`. Não há conferência do país.
 Os IDs `sintetico-*` da fixture são fictícios; não há validação de UUID ou
 comprovação da estabilidade do identificador fornecido pela fonte.
+
+Desde a versão 3 das regras, `municipio_id` e `municipio` são preservados em
+`Foco`. O código é texto com sete dígitos ASCII e prefixo igual ao `estado_id`.
+Essa checagem usa a [estrutura documentada pelo IBGE](https://www.ibge.gov.br/explica/codigos-dos-municipios.php),
+consultada em 09/10/2026 (UTC): sete dígitos, com os dois primeiros indicando a UF.
+Não é uma consulta à lista oficial nem validação de malha ou ponto em polígono.
+Código vazio vira `None`; código malformado ou com prefixo de outra UF vira
+`None` e gera um problema `municipio_id`, sem descartar a detecção. O nome é
+aparado e preservado com maiúsculas, acentos e grafia originais; vazio vira `None`.
+O nome não é usado para inferir um código ausente. Os valores brutos originais
+continuam preservados no snapshot, inclusive códigos que não foram aceitos.
 
 `data_hora_gmt` precisa conter data e hora com segundos. São aceitos separador
 espaço ou `T`, fração de segundo opcional e offset `Z` ou `±HH:MM`. Sem offset,
@@ -133,12 +144,13 @@ manter a primeira linha, consolidar dados ou eliminar duplicatas automaticamente
 IDs diferentes não são agrupados por proximidade nem tratados como um incêndio.
 
 A classificação compara hashes SHA-256 de uma lista JSON dos campos de `Foco`:
-ID, latitude, longitude, data UTC, satélite, estado e os quatro opcionais.
-Campos descartados, como município e bioma, e a lista de problemas opcionais
+ID, latitude, longitude, data UTC, satélite, estado, quatro opcionais
+meteorológicos/FRP, código municipal e nome municipal.
+Campos descartados, como bioma, e a lista de problemas opcionais
 não participam. Portanto, textos distintos podem produzir a mesma assinatura,
 inclusive um opcional inválido e um ausente, pois ambos viram `None`.
 
-Na versão 2 das regras, a assinatura decimal usa sinal, dígitos e expoente
+Desde a versão 2 das regras, a assinatura decimal usa sinal, dígitos e expoente
 obtidos por `Decimal.as_tuple()`, sem operações de arredondamento do contexto.
 Retira apenas zeros finais do coeficiente e ajusta o expoente com inteiros.
 Assim, `1`, `1.00` e `10e-1` são equivalentes; valores que diferem além de
@@ -157,6 +169,37 @@ arredondar valores diferentes ou falhar com expoentes extremos. A versão das
 regras passou de 1 para 2, alterando a identidade da execução mesmo quando
 as contagens são iguais. Registros antigos devem ser reproduzidos com a
 revisão original, sem reescrever seu hash ou sua versão.
+
+Na versão 3, código e nome municipal interpretados também participam da
+assinatura. O mesmo ID associado a outro código ou outro nome é conflito.
+Um código inválido e um ausente podem continuar equivalentes após ambos
+virarem `None`, caso os demais campos interpretados sejam iguais.
+
+## Agregações
+
+Somente observações selecionadas e aprovadas no controle de identidade entram
+nas agregações. Cada observação incrementa o dia UTC e o par código/nome
+municipal em SQLite temporário, usando o mesmo banco da execução. A lista
+de focos não é mantida em memória; as tabelas finais são materializadas no resultado.
+
+- `por_dia_utc` tem todos os dias do recorte em ordem, inclusive contagens zero.
+  A conversão para UTC ocorre antes de extrair o dia; não é o calendário de Manaus.
+- `por_municipio` agrupa por código, não pelo nome. Códigos distintos com o
+  mesmo nome continuam separados. Os códigos são ordenados; o grupo `null`,
+  quando existe, vem por último e reúne observações sem código utilizável.
+- Cada grupo municipal expõe todos os `nomes` distintos ordenados, `deteccoes`,
+  `sem_nome` e `nomes_divergentes`. Dois nomes não vazios para o mesmo código
+  sinalizam divergência, sem escolher silenciosamente um nome preferido.
+  O grupo `null` não representa um único município e não sinaliza divergência.
+- `ausencias` conta valores `None` em seis campos selecionados, incluindo
+  município e código. `problemas_por_campo` conta inválidos; ausentes e
+  sentinelas reconhecidas não são problemas. Um inválido convertido em `None`
+  participa das duas contagens, que não devem ser somadas como categorias exclusivas.
+
+Cada uma das tabelas precisa somar exatamente `ids_selecionados_unicos`.
+Recorte vazio gera 31 dias com zero e lista municipal vazia. Uma repetição de
+ID ou falha de leitura impede a conclusão; o CLI não publica tabelas parciais.
+Zero detecções em um dia não comprova ausência de fogo ou cobertura completa.
 
 ## Limites implementados
 
@@ -185,7 +228,9 @@ Verificação do snapshot e leitura do CSV têm cronômetros separados; não há
 prazo total de 900 segundos para toda a execução.
 
 O leitor trabalha com uma linha limitada por vez. O controle de IDs usa disco
-temporário, sem manter um conjunto completo em memória. Não há limite medido
+temporário, sem manter um conjunto completo em memória. Grupos por dia,
+código e nome também são acumulados no SQLite. O resultado final depende
+do número de grupos e nomes distintos. Não há limite medido
 de RAM, quota ou reserva de disco para o SQLite temporário, medição de desempenho
 do arquivo nacional ou limite global de execuções concorrentes. Cada chamada
 usa seu próprio banco temporário, normalmente removido ao terminar ou falhar;
@@ -267,24 +312,26 @@ garantia geral contra trocas concorrentes de caminhos ou links em ancestrais.
 ## Execução e manifesto
 
 `executar_snapshot(diretorio, perfil="fixture")` retorna `ResultadoExecucao`
-com hash e tamanho do snapshot, IDs selecionados únicos, resumo, manifesto e
-`execucao_sha256`. Não salva o manifesto, exporta focos, cria banco persistente
-ou registra uma data de execução. O [exemplo do README](../README.md#reproduzir-o-processamento)
-salva um registro JSON com o manifesto e contexto adicional.
+com hash e tamanho do snapshot, IDs selecionados únicos, resumo, agregações,
+manifesto e `execucao_sha256`. Essa API não grava arquivos nem cria banco
+persistente. `exportar_resultado` publica o resultado; o
+[CLI do README](../README.md#executar-o-exemplo-sintético) combina as duas APIs.
 
 O manifesto de execução contém:
 
-- `versao_manifesto_execucao = 1` e `versao_regras = 2`.
+- `versao_manifesto_execucao = 2` e `versao_regras = 3`.
 - `snapshot`: SHA-256 e tamanho da entrada.
+- `recorte`: estado, satélite, início inclusivo, fim exclusivo e fuso UTC da agregação.
 - `perfil` e `limites`: os seis limites efetivos do leitor.
 - `politica_identidade`: campo `source_id`, duplicata como erro e intenção
   de distinguir conteúdo (`distingue_conteudo = true`, sujeita às limitações acima).
-- `resultado`: IDs selecionados únicos e as cinco contagens do resumo.
+- `resultado`: IDs selecionados únicos, cinco contagens do resumo e as
+  agregações completas, incluindo tabelas, ausências e problemas por campo.
 
 `execucao_sha256` é o SHA-256 do manifesto serializado em JSON com
 `ensure_ascii=True`, `sort_keys=True`, `separators=(",", ":")`, codificado
 em UTF-8. Não é hash do código, dos objetos `Foco` ou dos bytes do JSON
-formatado salvo pelo exemplo. A assinatura interna de um foco serve somente
+formatado exportado. A assinatura interna de um foco serve somente
 à classificação de repetições; não é publicada no manifesto.
 
 Mesmo snapshot, regras e perfil produzem a mesma identidade nas condições
@@ -295,21 +342,58 @@ fazem parte do hash da execução.
 
 Para reproduzir, preserve `original.csv`, `manifesto.json` do snapshot,
 manifesto e hash da execução, perfil, revisão do código e ambiente Python.
-O exemplo guarda revisão e versão em `contexto`, fora do manifesto canônico.
+O CLI guarda revisão Git, presença de alterações locais, versão do Python,
+sistema, data UTC e hash dos arquivos Python do pacote em `contexto.json`.
+Esse contexto pertence à primeira exportação e fica fora do manifesto canônico.
 Se o código tiver alterações locais, guarde-as também: o commit sozinho não
-as descreve. Não existe leitor ou verificador de manifesto de execução salvo;
-a comparação é feita ao reexecutar a API com a revisão e o perfil correspondentes.
+as descreve. O hash de código percorre os `*.py` do pacote em ordem de nome,
+concatenando nome UTF-8, byte nulo, tamanho em oito bytes big-endian e conteúdo.
+Ele não cobre documentação, testes, dependências do sistema ou o ambiente inteiro.
 
-O manifesto não inclui commit, versão do Python, os valores explícitos de
-estado/satélite/período ou hash das regras. A versão das regras é uma constante
-manual. Assim, igualdade de `execucao_sha256` não comprova que dois códigos
-diferentes executaram o mesmo processamento nem certifica igualdade de todos
-os focos interpretados: o resultado registrado é um resumo.
+O manifesto inclui o recorte explícito, mas não commit, versão do Python ou
+hash do código. A versão das regras é uma constante manual. Assim, igualdade
+de `execucao_sha256` não comprova que dois códigos diferentes executaram o
+mesmo processamento nem certifica igualdade de todos os focos interpretados.
+A comparação de exportações é feita reexecutando e conferindo os três
+artefatos determinísticos; não existe importação independente de um manifesto salvo.
 
 Identidade dos bytes permite conferir a entrada preservada; reprodução exige
 entrada, código, parâmetros e ambiente; validade científica exige ainda
 metodologia, procedência, qualidade e interpretação adequadas. São verificações
 distintas, e nenhuma substitui as demais.
+
+## CLI e exportação
+
+`PYTHONPATH=src python3 -m rastro` recebe `--csv` ou `--snapshot`,
+`--perfil fixture|mensal` e `--saida`. No modo CSV, `--snapshots` define a
+raiz de cópias. O padrão de saída é `dados/resultados/<execucao_sha256>/`.
+Os erros de argumentos, leitura, identidade ou publicação terminam com código
+2 e mensagem em stderr; stdout só recebe o resumo após a conclusão.
+
+O diretório publicado contém `manifesto.json` (manifesto e hash),
+`por_dia.csv`, `por_municipio.csv` e `contexto.json`. CSVs são UTF-8 com LF,
+vírgula e cabeçalho. `nomes_json` é uma lista JSON dentro da célula CSV,
+preservando aspas, vírgulas, acentos e todos os nomes distintos do grupo.
+O código ausente é vazio no CSV e `null` no JSON. Os CSVs contêm agregações,
+não a lista das observações selecionadas.
+
+A publicação usa trava POSIX não bloqueante na raiz de saída, grava os quatro
+arquivos em pasta temporária, executa `fsync` nos arquivos e renomeia a pasta
+completa. Falhas normais removem o temporário; interrupção abrupta pode deixar
+`.tmp-*`. Não há `fsync` dos diretórios, quota da exportação ou garantia de
+durabilidade após queda de energia. A trava coordena publicações na mesma raiz,
+não limita execuções simultâneas nem gravações externas não cooperantes.
+
+Ao encontrar o mesmo resultado, a exportação compara manifesto e CSVs byte
+a byte e exige os quatro arquivos esperados. Uma divergência ou pasta
+incompleta é recusada, sem substituir arquivos. O contexto inicial é preservado
+e conferido apenas quanto ao formato básico; não é autenticado nem incluído
+no hash da execução. Links simbólicos no destino direto e nos arquivos
+existentes são recusados, sem promessa de proteção contra troca de ancestrais.
+
+As versões anteriores dos manifestos continuam sendo registros históricos.
+Preserve-as e use a revisão correspondente para reproduzi-las. O snapshot
+não muda de formato; os novos resultados ficam em outro hash de execução.
 
 ## Procedência e condições de uso
 
@@ -343,8 +427,8 @@ snapshots, manifestos e registros salvos pelo exemplo. Também exclui `.venv/`,
 do sistema, fora dos artefatos versionados; a fixture permanece no Git.
 
 O arquivo real já foi processado com o recorte e os limites documentados.
+As agregações por dia e código municipal e a exportação local estão implementadas.
 Para avançar na análise, falta aprofundar a conferência de metodologia e unidades
-com a fonte, avaliar a estabilidade dos IDs, registrar melhor
-a revisão das regras e medir recursos e desempenho. Agregações, persistência
-e interface ainda são etapas futuras. O comportamento atual não determina
-a edição da malha municipal usada pela fonte nem responde à pergunta científica.
+com a fonte, avaliar a estabilidade dos IDs e medir recursos e desempenho de
+forma sistemática. Persistência em banco e interface ainda são etapas futuras.
+O comportamento atual não determina a edição da malha municipal usada pela fonte.
