@@ -161,6 +161,13 @@ class TestExecucaoReproduzivel(unittest.TestCase):
         with self.assertRaisesRegex(ErroIdentidade, "conteúdo diferente"):
             executar_snapshot(snapshot.diretorio)
 
+    def test_diferencas_municipais_do_mesmo_id_sao_conflitos(self):
+        for mudanca in ({"municipio_id": "1300144"}, {"municipio": "OUTRO NOME"}):
+            with self.subTest(mudanca=mudanca):
+                snapshot = self.criar_snapshot_de_linhas([exemplo(), exemplo(**mudanca)])
+                with self.assertRaisesRegex(ErroIdentidade, "conteúdo diferente"):
+                    executar_snapshot(snapshot.diretorio)
+
 
 if __name__ == "__main__":
     unittest.main()

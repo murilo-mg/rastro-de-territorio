@@ -5,6 +5,10 @@ Queimadas do INPE. O processamento e a reprodução local produziram os mesmos
 hashes e contagens. Este registro descreve os bytes abaixo, não qualquer versão
 futura do arquivo disponível na mesma URL.
 
+As primeiras seções preservam a validação histórica das regras 2. A
+[validação das regras 3](#agregações-e-cli-com-as-regras-3) está no final,
+com o novo comando, as tabelas e o hash atual.
+
 ## Fonte, entrada e revisão
 
 | Item | Valor |
@@ -135,14 +139,66 @@ Esta execução confirma compatibilidade operacional do arquivo registrado com
 o leitor, com o recorte e com o controle de identidade implementado. Não
 comprova cobertura completa, precisão do sensor, validade de unidades e faixas,
 estabilidade dos IDs entre arquivos ou coerência territorial das coordenadas.
-Ainda não há validação contra malha municipal nem agregações implementadas.
+Nessa revisão histórica, ainda não havia agregações. A validação contra
+malha municipal continua pendente.
 
 As 1.842 linhas representam detecções selecionadas, não incêndios distintos
 nem hectares queimados. As limitações de interpretação e as referências da
 fonte permanecem no [contrato de dados](DADOS.md#interpretação-científica).
 
-O próximo passo é preservar os campos municipais e agregar detecções por dia
-UTC e por identificador municipal informado na fonte, explicitando dados
-ausentes e mantendo as somas consistentes com o total selecionado. A edição
-da malha territorial e as condições de uso dos dados ainda precisam ser
-esclarecidas antes de tratá-los como uma distribuição espacial validada.
+O passo seguinte dessa validação foi preservar os campos municipais e agregar
+as detecções, conforme registrado abaixo. A edição da malha territorial e as
+condições de uso dos dados ainda precisam ser esclarecidas antes de tratar
+as tabelas como uma distribuição espacial validada.
+
+## Agregações e CLI com as regras 3
+
+A implementação de agregações foi validada com os mesmos bytes da entrada,
+sobre a base `d212f1bc002608bba265f170086c95a726700867` e as alterações do
+combo de campos municipais, agregações e CLI. O novo manifesto tem formato 2,
+regras 3 e agregações 1. O contexto exportado registra o hash dos arquivos
+Python e a presença de alterações locais; essa base isolada não contém o combo.
+
+```bash
+PYTHONPATH=src python3 -m rastro \
+  --snapshot dados/snapshots/9420a1babbf627ef80d9b39ba1d8e2b656f88e98e11c622952094704be7106c3 \
+  --perfil mensal
+```
+
+Novo SHA-256 do manifesto canônico da execução:
+
+```text
+e64d4e0ec72b9bf1e7e5bc5c718f7622e8357df2bdda479505474d5e8bce4f0c
+```
+
+| Resultado | Valor |
+| --- | ---: |
+| Detecções selecionadas e IDs únicos | 1.842 |
+| Dias UTC exportados | 31 |
+| Códigos municipais com detecções | 50 |
+| Soma das contagens diárias | 1.842 |
+| Soma das contagens municipais | 1.842 |
+| Detecções sem código municipal utilizável | 0 |
+| Códigos com nomes divergentes | 0 |
+| Ausências de risco de fogo nos selecionados | 11 |
+| Problemas opcionais nos selecionados | 0 |
+
+As 594.309 linhas lidas, 592.467 fora do recorte e zero rejeitadas permanecem
+iguais. As ausências reconhecidas de risco de fogo demonstram por que o
+contador de problemas não pode ser interpretado como contador de valores vazios.
+
+Uma contagem independente com `csv.DictReader` percorreu o original,
+selecionou estado, satélite e período e comparou os dias, códigos, nomes e
+contagens às duas tabelas exportadas. As 31 linhas diárias e os 50 grupos
+municipais coincidiram. Para inspecionar alguns resultados da implementação:
+
+| Grupo informado na fonte | Detecções |
+| --- | ---: |
+| `1300144` - APUÍ | 416 |
+| `1303304` - NOVO ARIPUANÃ | 269 |
+| `1301704` - HUMAITÁ | 210 |
+| Dia UTC 2025-08-26 | 335 |
+
+Essas contagens são descritivas do recorte, não uma validação da classificação
+territorial de cada ponto nem uma estimativa de área queimada. Os arquivos
+produzidos ficam em `dados/resultados/<execucao_sha256>/`, fora do Git.
