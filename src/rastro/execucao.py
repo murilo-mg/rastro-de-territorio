@@ -11,6 +11,7 @@ from pathlib import Path
 from .agregacoes import AcumuladorAgregacoes
 from .leitor import Foco, PERFIS, ler_csv, ESTADO_ID, SATELITE, INICIO, FIM
 from .snapshot import verificar_snapshot
+from .territorio import carregar_referencia, conferir_municipios
 
 
 class ErroIdentidade(ValueError):
@@ -92,10 +93,12 @@ def _criar_manifesto_execucao(
     ids_selecionados_unicos,
     resumo,
     agregacoes,
+    referencia,
 ):
     return {
-        "versao_manifesto_execucao": 2,
-        "versao_regras": 3,
+        "versao_manifesto_execucao": 3,
+        "versao_regras": 4,
+        "referencia_municipal": referencia.descricao,
         "recorte": {
             "estado_id": ESTADO_ID,
             "satelite": SATELITE,
@@ -125,6 +128,7 @@ def _criar_manifesto_execucao(
             "ids_selecionados_unicos": ids_selecionados_unicos,
             "resumo": dict(resumo),
             "agregacoes": agregacoes,
+            "conferencia_municipal": conferir_municipios(agregacoes["por_municipio"], referencia),
         },
     }
 
@@ -147,6 +151,7 @@ def executar_snapshot(diretorio, *, perfil="fixture"):
     um conjunto potencialmente grande inteiro na memória.
     """
     snapshot = verificar_snapshot(diretorio, perfil=perfil)
+    referencia = carregar_referencia()
     original = Path(snapshot.diretorio) / "original.csv"
     limites = PERFIS[perfil]
 
@@ -232,6 +237,7 @@ def executar_snapshot(diretorio, *, perfil="fixture"):
         ids_selecionados_unicos=ids_selecionados_unicos,
         resumo=resumo,
         agregacoes=agregacoes,
+        referencia=referencia,
     )
     execucao_sha256 = _hash_manifesto(manifesto)
 

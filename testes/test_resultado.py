@@ -87,7 +87,7 @@ class TestResultado(ExportacaoTemporaria):
             verificar_resultado(self.pasta)
 
     def test_recusa_versoes_futuras(self):
-        self.adulterar(lambda m: m.update(versao_regras=4))
+        self.adulterar(lambda m: m.update(versao_regras=5))
         with self.assertRaisesRegex(ValueError, "Versões não suportadas"):
             verificar_resultado(self.pasta)
 

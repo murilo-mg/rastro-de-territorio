@@ -202,3 +202,40 @@ municipais coincidiram. Para inspecionar alguns resultados da implementação:
 Essas contagens são descritivas do recorte, não uma validação da classificação
 territorial de cada ponto nem uma estimativa de área queimada. Os arquivos
 produzidos ficam em `dados/resultados/<execucao_sha256>/`, fora do Git.
+
+## Matriz e referência municipal nas regras 4
+
+As mesmas entradas foram reexecutadas com manifesto 3, regras 4 e agregações 2,
+incluindo referência IBGE DTB 2025 e matriz município × dia. O hash do snapshot
+permanece igual. O novo hash da execução é:
+
+```text
+62cd809c8b059aa98decc8640c8a7507a05d204f82529dc6f660a25e8f87ca92
+```
+
+As contagens anteriores permanecem: 594.309 lidas, 1.842 selecionadas,
+592.467 fora do recorte, zero rejeitadas e zero problemas opcionais.
+Os 50 códigos observados foram encontrados nos 62 municípios da referência
+DTB 2025, sem nomes divergentes após a normalização registrada. Isso não
+converte nomes equivalentes em igualdade literal nem valida a posição espacial.
+
+A matriz tem 1.550 células: 50 grupos × 31 dias, incluindo zeros. Uma leitura
+independente do CSV original com `csv.DictReader` e datas UTC coincidiu com
+todas as células. As somas das linhas coincidiram com os totais municipais,
+e as somas das colunas, com os totais diários.
+
+| Grupo | Total | Máximo diário | Dia UTC do máximo |
+| --- | ---: | ---: | --- |
+| Apuí (`1300144`) | 416 | 88 | 2025-08-26 |
+| Humaitá (`1301704`) | 210 | 32 | 2025-08-16 |
+
+Foram exportados `por_municipio_dia.csv` e `conferencia_municipal.csv`, além
+dos quatro arquivos anteriores. Os resultados das regras 3 continuaram
+verificáveis com seus hashes originais e não foram modificados.
+
+A referência preservada tem data-base 31/12/2025, posterior ao recorte, e
+não identifica a edição territorial usada pelo INPE. Origem, hashes, extração,
+classes de comparação e limites estão em
+[REFERENCIA_MUNICIPAL.md](REFERENCIA_MUNICIPAL.md). O caderno versão 2 apresenta
+seleção de até três grupos com gráfico diário e tabela exata; a conferência de
+navegador está em [CADERNO.md](CADERNO.md#validação-desta-etapa).

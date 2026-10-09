@@ -1,4 +1,4 @@
-"""Leitura e conferência offline de uma exportação completa das regras 3.
+"""Leitura e conferência offline das exportações das regras 3 e 4.
 
 Confere consistência interna; não substitui reexecutar o snapshot nem autentica
 a origem do arquivo ou o contexto, que não participa do hash canônico.
@@ -16,10 +16,12 @@ from .agregacoes import CAMPOS_AUSENTES
 from .execucao import ResultadoExecucao, _hash_manifesto
 from .exportacao import _artefatos
 from .leitor import ESTADO_ID, FIM, INICIO, PERFIS, SATELITE
+from .territorio import carregar_referencia, conferir_municipios
 
 
 LIMITE_ARTEFATO = 16 * 1024 * 1024
 ARQUIVOS = {"manifesto.json", "por_dia.csv", "por_municipio.csv", "contexto.json"}
+ARQUIVOS_NOVOS = ARQUIVOS | {"por_municipio_dia.csv", "conferencia_municipal.csv"}
 PROBLEMAS = {
     "numero_dias_sem_chuva": "dias_sem_chuva", "precipitacao": "precipitacao",
     "risco_fogo": "risco_fogo", "frp": "frp", "municipio_id": "municipio_id",
@@ -82,11 +84,14 @@ def _json_estrito(conteudo):
 
 
 def _validar_manifesto(m):
-    _chaves(m, ("versao_manifesto_execucao", "versao_regras", "recorte", "snapshot",
-                "perfil", "limites", "politica_identidade", "resultado"), "manifesto")
-    _exigir(type(m["versao_manifesto_execucao"]) is int and m["versao_manifesto_execucao"] == 2
-            and type(m["versao_regras"]) is int and m["versao_regras"] == 3,
-            "Versões não suportadas: esperado manifesto 2 e regras 3")
+    _exigir(type(m) is dict, "Estrutura inválida: manifesto")
+    novo = m.get("versao_manifesto_execucao") == 3
+    campos = ["versao_manifesto_execucao", "versao_regras", "recorte", "snapshot",
+              "perfil", "limites", "politica_identidade", "resultado"]
+    _chaves(m, campos + (["referencia_municipal"] if novo else []), "manifesto")
+    _exigir(type(m["versao_manifesto_execucao"]) is int and type(m["versao_regras"]) is int
+            and (m["versao_manifesto_execucao"], m["versao_regras"]) in ((2, 3), (3, 4)),
+            "Versões não suportadas: esperado manifesto/regras 2/3 ou 3/4")
     _exigir(m["recorte"] == {
         "estado_id": ESTADO_ID, "satelite": SATELITE,
         "inicio_inclusive": INICIO.isoformat(), "fim_exclusive": FIM.isoformat(),
@@ -107,7 +112,8 @@ def _validar_manifesto(m):
     _exigir(_sha(m["snapshot"]["sha256"]), "Hash do snapshot inválido")
     _inteiro(m["snapshot"]["bytes"], "snapshot.bytes", maximo=limites["bytes_arquivo"])
     resultado = m["resultado"]
-    _chaves(resultado, ("ids_selecionados_unicos", "resumo", "agregacoes"), "resultado")
+    _chaves(resultado, ["ids_selecionados_unicos", "resumo", "agregacoes"]
+            + (["conferencia_municipal"] if novo else []), "resultado")
     resumo = resultado["resumo"]
     _chaves(resumo, ("lidas", "selecionadas", "fora_do_recorte", "rejeitadas",
                      "problemas_opcionais"), "resumo")
@@ -119,15 +125,23 @@ def _validar_manifesto(m):
     _exigir(resultado["ids_selecionados_unicos"] == total, "Total de IDs divergente")
     _exigir(resumo["lidas"] == total + resumo["fora_do_recorte"] + resumo["rejeitadas"],
             "Categorias não somam as linhas lidas")
-    _validar_agregacoes(resultado["agregacoes"], total, resumo["problemas_opcionais"])
+    _validar_agregacoes(resultado["agregacoes"], total, resumo["problemas_opcionais"], 2 if novo else 1)
+    if novo:
+        referencia = carregar_referencia()
+        _exigir(_hash_manifesto(m["referencia_municipal"]) == _hash_manifesto(referencia.descricao),
+                "Referência municipal não corresponde à edição preservada")
+        conferida = conferir_municipios(resultado["agregacoes"]["por_municipio"], referencia)
+        _exigir(_hash_manifesto(resultado["conferencia_municipal"]) == _hash_manifesto(conferida),
+                "Conferência municipal divergente")
 
 
-def _validar_agregacoes(a, total, problemas):
-    _chaves(a, ("versao_agregacoes", "por_dia_utc", "por_municipio",
+def _validar_agregacoes(a, total, problemas, versao):
+    campos = ["versao_agregacoes", "por_dia_utc", "por_municipio",
                 "municipios_com_codigo", "sem_municipio_id",
-                "municipios_com_nomes_divergentes", "ausencias", "problemas_por_campo"),
+                "municipios_com_nomes_divergentes", "ausencias", "problemas_por_campo"]
+    _chaves(a, campos + (["por_municipio_dia_utc"] if versao == 2 else []),
             "agregacoes")
-    _exigir(type(a["versao_agregacoes"]) is int and a["versao_agregacoes"] == 1,
+    _exigir(type(a["versao_agregacoes"]) is int and a["versao_agregacoes"] == versao,
             "Versão de agregações não suportada")
     dias = a["por_dia_utc"]
     n_dias = (FIM.date() - INICIO.date()).days
@@ -183,6 +197,20 @@ def _validar_agregacoes(a, total, problemas):
     for campo, valor in por_campo.items():
         _inteiro(valor, f"problemas.{campo}", minimo=1, maximo=a["ausencias"][PROBLEMAS[campo]])
     _exigir(sum(por_campo.values()) == problemas, "Total de problemas divergente")
+    if versao == 2:
+        matriz = a["por_municipio_dia_utc"]
+        _exigir(type(matriz) is list and len(matriz) == len(grupos), "Matriz municipal incompleta")
+        somas_diarias = [0] * n_dias
+        for linha, grupo in zip(matriz, grupos):
+            _chaves(linha, ("municipio_id", "deteccoes_por_dia"), "matriz municipal")
+            _exigir(linha["municipio_id"] == grupo["municipio_id"], "Ordem da matriz municipal divergente")
+            valores = linha["deteccoes_por_dia"]
+            _exigir(type(valores) is list and len(valores) == n_dias, "Calendário municipal incompleto")
+            for i, n in enumerate(valores):
+                _inteiro(n, "deteccoes município/dia", maximo=grupo["deteccoes"])
+                somas_diarias[i] += n
+            _exigir(sum(valores) == grupo["deteccoes"], "Soma por município/dia divergente")
+        _exigir(somas_diarias == [d["deteccoes"] for d in dias], "Somas diárias da matriz divergentes")
 
 
 def _validar_contexto(c):
@@ -205,7 +233,7 @@ def _validar_contexto(c):
 
 
 def verificar_resultado(diretorio):
-    """Lê os quatro arquivos, valida esquema/hash/somas e compara os CSVs.
+    """Lê a exportação, valida esquema/hash/somas e compara todos os CSVs.
 
     Aceita pasta renomeada para permitir cópias. A identidade vem do manifesto.
     Não acessa rede, snapshot, Git nem o ambiente registrado na exportação.
@@ -213,15 +241,18 @@ def verificar_resultado(diretorio):
     diretorio = Path(diretorio)
     _exigir(not diretorio.is_symlink() and diretorio.is_dir(),
             "O resultado precisa ser um diretório regular")
-    _exigir({p.name for p in diretorio.iterdir()} == ARQUIVOS,
+    arquivos = {p.name for p in diretorio.iterdir()}
+    _exigir(arquivos == ARQUIVOS or arquivos == ARQUIVOS_NOVOS,
             "Resultado incompleto ou com arquivos inesperados")
     conteudos = {nome: _ler_regular(diretorio / nome, 8192 if nome == "contexto.json"
-                                   else LIMITE_ARTEFATO) for nome in sorted(ARQUIVOS)}
+                                   else LIMITE_ARTEFATO) for nome in sorted(arquivos)}
     registro = _json_estrito(conteudos["manifesto.json"])
     _chaves(registro, ("execucao_sha256", "manifesto"), "registro")
     _exigir(_sha(registro["execucao_sha256"]), "Hash da execução inválido")
     m = registro["manifesto"]
     _validar_manifesto(m)
+    _exigir(arquivos == (ARQUIVOS_NOVOS if m["versao_manifesto_execucao"] == 3 else ARQUIVOS),
+            "Conjunto de arquivos incompatível com a versão do manifesto")
     _exigir(_hash_manifesto(m) == registro["execucao_sha256"], "Hash da execução divergente")
     r = m["resultado"]
     execucao = ResultadoExecucao(

@@ -19,6 +19,9 @@ A execução real selecionou **1.842 detecções**, distribuídas em **50 códig
 municipais informados na fonte**, e gerou uma série com os **31 dias UTC**
 do mês. O [registro de validação](docs/VALIDACAO_REAL.md) identifica os bytes,
 as regras e os limites dessa conclusão.
+Os 50 códigos foram encontrados na referência cadastral IBGE DTB 2025,
+sem divergências de nomes após a normalização documentada. A comparação usa
+data-base 31/12/2025 e não verifica a posição espacial das detecções.
 
 ## Estado atual
 
@@ -27,10 +30,13 @@ as regras e os limites dessa conclusão.
 - Controle de IDs selecionados em SQLite temporário; repetições interrompem a execução.
 - Agregações por dia UTC e código municipal, com grupos sem código, nomes
   divergentes e valores ausentes explícitos.
+- Matriz município × dia com os 31 dias para cada grupo observado, inclusive zeros.
+- Referência IBGE DTB 2025 preservada e conferência de código/nome sem correção silenciosa.
 - Manifesto determinístico que inclui recorte, regras, contagens e tabelas.
 - CLI que preserva ou reutiliza o snapshot e publica JSON e CSVs completos.
 - Verificação independente de resultados exportados, sem reler o CSV original.
-- Caderno HTML offline com série diária, busca municipal, diagnósticos e procedência.
+- Caderno HTML offline com série diária, comparação de até três grupos, busca
+  municipal, diagnósticos e procedência.
 - Testes offline com dados sintéticos e execução registrada com o arquivo real.
 
 A interface local está disponível. Mapa, API web, banco persistente, coletor HTTP e
@@ -43,6 +49,8 @@ Python 3.12 e Linux. Todas as dependências Python são da biblioteca padrão,
 incluindo `sqlite3` e `fcntl`. As travas POSIX não têm adaptação para Windows.
 `PYTHONPATH=src` permite executar o pacote sem instalá-lo. Git é usado quando
 disponível para registrar a revisão; a ausência dele não impede a execução.
+O clone inclui o ODS e o CSV da referência municipal; não é necessário
+instalar bibliotecas de planilhas ou consultar o IBGE durante a execução.
 
 ```bash
 git clone https://github.com/murilo-mg/rastro-de-territorio.git
@@ -64,7 +72,7 @@ Com as regras atuais, o resumo é:
 
 ```text
 snapshot_sha256: 82d677fe686df80c69a5dffab3988446c640580f01cdc160a7c489101032e23f
-execucao_sha256: 83d3373305d1877832a0309034342df9d6da6f41b8048e542330bd587c52e8bd
+execucao_sha256: 057c4423d397be25f77f36b048356601c52be811e2c66294e16d7737310131b5
 ids_selecionados_unicos: 2
 lidas: 5
 selecionadas: 2
@@ -75,6 +83,11 @@ dias_utc: 31
 municipios_com_codigo: 1
 sem_municipio_id: 0
 municipios_com_nomes_divergentes: 0
+grupos_na_matriz_municipal: 1
+referencia_municipal: IBGE DTB 2025; data-base 2025-12-31
+codigos_encontrados: 1
+codigos_nao_encontrados: 0
+grupos_com_nomes_divergentes: 0
 ```
 
 Na primeira execução aparece `exportacao: criada`; outra execução do mesmo
@@ -110,10 +123,10 @@ de snapshots somente no modo `--csv`; `--saida CAMINHO` altera a raiz das
 exportações. O padrão é `dados/resultados`. Use `python3 -m rastro --help`
 com `PYTHONPATH=src` para consultar os argumentos.
 
-Para os mesmos bytes reais, as regras 3 geram:
+Para os mesmos bytes reais, as regras 4 geram:
 
 ```text
-execucao_sha256: e64d4e0ec72b9bf1e7e5bc5c718f7622e8357df2bdda479505474d5e8bce4f0c
+execucao_sha256: 62cd809c8b059aa98decc8640c8a7507a05d204f82529dc6f660a25e8f87ca92
 lidas: 594309
 selecionadas: 1842
 fora_do_recorte: 592467
@@ -123,6 +136,11 @@ dias_utc: 31
 municipios_com_codigo: 50
 sem_municipio_id: 0
 municipios_com_nomes_divergentes: 0
+grupos_na_matriz_municipal: 50
+referencia_municipal: IBGE DTB 2025; data-base 2025-12-31
+codigos_encontrados: 50
+codigos_nao_encontrados: 0
+grupos_com_nomes_divergentes: 0
 ```
 
 ## Consultar os arquivos produzidos
@@ -134,15 +152,21 @@ Cada resultado ocupa `dados/resultados/<execucao_sha256>/`:
 | `manifesto.json` | Hash da execução e manifesto completo, incluindo tabelas e diagnósticos |
 | `por_dia.csv` | Uma linha por dia UTC do recorte, inclusive contagens zero |
 | `por_municipio.csv` | Código, lista JSON de nomes, contagem, ausências de nome e indicação de divergência |
+| `por_municipio_dia.csv` | Código, dia UTC e contagem para cada grupo × 31 dias, inclusive zeros |
+| `conferencia_municipal.csv` | Nome cadastral IBGE, situação do código e listas de nomes iguais, equivalentes, divergentes ou sem referência |
 | `contexto.json` | Contexto da primeira exportação: Python, sistema, revisão Git, alterações locais e hash dos arquivos Python do pacote |
 
 `nomes_json` preserva todos os nomes distintos associados ao código. Um código
 sem nome continua contabilizado; uma observação sem código utilizável entra
 no grupo de código vazio no CSV (`null` no JSON). Código com formato correto
-não significa município conferido contra uma malha ou tabela oficial.
+não significa localização espacial conferida. A comparação cadastral fica
+separada em `conferencia_municipal.csv` e no manifesto. Nenhum nome da fonte
+é substituído pelo nome IBGE.
 
-O manifesto usa `versao_manifesto_execucao = 2` e `versao_regras = 3`.
-As somas de cada tabela precisam ser iguais ao total selecionado. Os arquivos
+O manifesto usa `versao_manifesto_execucao = 3`, `versao_regras = 4` e
+agregações 2. A referência preservada e a conferência fazem parte da identidade.
+As somas das três tabelas de contagem correspondem ao total selecionado; as
+linhas e colunas da matriz também correspondem aos totais municipais e diários. Os arquivos
 são preparados em uma pasta temporária e publicados juntos após o sucesso.
 Uma saída existente divergente é recusada. A reutilização preserva o contexto
 da primeira exportação; não cria um histórico de todas as chamadas do comando.
@@ -169,18 +193,20 @@ O comando simples do leitor não controla IDs repetidos nem gera agregações.
 
 ## Verificar uma exportação existente
 
-O novo comando confere os quatro arquivos exportados, as versões suportadas,
+O comando confere todos os arquivos exportados da versão, as versões suportadas,
 o hash canônico, as somas, o calendário e a correspondência dos CSVs:
 
 ```bash
 PYTHONPATH=src python3 -m rastro verificar \
-  dados/resultados/e64d4e0ec72b9bf1e7e5bc5c718f7622e8357df2bdda479505474d5e8bce4f0c
+  dados/resultados/62cd809c8b059aa98decc8640c8a7507a05d204f82529dc6f660a25e8f87ca92
 ```
 
 Use `--json` para receber o resumo em JSON. A verificação não reprocessa o
 snapshot, não autentica a procedência e não certifica o contexto da primeira
-exportação. Ela aceita o formato de manifesto 2, regras 3 e agregações 1.
-Os resultados do combo anterior podem ser usados diretamente.
+exportação. Ela aceita manifesto/regras/agregações `2/3/1` e `3/4/2`.
+Resultados anteriores com quatro arquivos continuam sendo lidos com seus
+hashes originais. Eles não recebem matriz nem referência automaticamente;
+reexecute o snapshot para gerar o resultado com seis arquivos.
 
 ## Abrir o caderno no navegador
 
@@ -188,8 +214,8 @@ Após exportar o CSV real ou seu snapshot:
 
 ```bash
 PYTHONPATH=src python3 -m rastro caderno \
-  dados/resultados/e64d4e0ec72b9bf1e7e5bc5c718f7622e8357df2bdda479505474d5e8bce4f0c &&
-xdg-open dados/cadernos/e64d4e0ec72b9bf1e7e5bc5c718f7622e8357df2bdda479505474d5e8bce4f0c.html
+  dados/resultados/62cd809c8b059aa98decc8640c8a7507a05d204f82529dc6f660a25e8f87ca92 &&
+xdg-open dados/cadernos/v2/62cd809c8b059aa98decc8640c8a7507a05d204f82529dc6f660a25e8f87ca92.html
 ```
 
 Para usar somente a fixture, sem baixar dados reais:
@@ -197,27 +223,33 @@ Para usar somente a fixture, sem baixar dados reais:
 ```bash
 PYTHONPATH=src python3 -m rastro --csv testes/fixtures/focos_sinteticos.csv &&
 PYTHONPATH=src python3 -m rastro caderno \
-  dados/resultados/83d3373305d1877832a0309034342df9d6da6f41b8048e542330bd587c52e8bd &&
-xdg-open dados/cadernos/83d3373305d1877832a0309034342df9d6da6f41b8048e542330bd587c52e8bd.html
+  dados/resultados/057c4423d397be25f77f36b048356601c52be811e2c66294e16d7737310131b5 &&
+xdg-open dados/cadernos/v2/057c4423d397be25f77f36b048356601c52be811e2c66294e16d7737310131b5.html
 ```
 
 Também é possível abrir o arquivo com duplo clique. `xdg-open` precisa de
 uma sessão gráfica; não é requisito para gerar o HTML. `--saida caminho.html`
-permite escolher outro arquivo, sempre fora da pasta dos quatro artefatos.
+permite escolher outro arquivo, sempre fora da pasta da exportação.
 Uma saída diferente já existente não é sobrescrita; escolha outro nome.
 
 O caderno mostra os 31 dias, a tabela municipal completa, todos os nomes de
 cada grupo, ausências, problemas e os hashes. A busca aceita nomes sem acento
 e códigos; os percentuais continuam usando o total selecionado. Buscar um
-município filtra apenas a tabela: a exportação ainda não possui o cruzamento
-município × dia. Sem JavaScript, as tabelas e o gráfico permanecem disponíveis.
+município filtra apenas a tabela. Para atualizar o gráfico da comparação,
+selecione de um a três grupos nos controles próprios. O gráfico usa contagens
+absolutas, eixo comum começando em zero e tabela de valores exatos.
+Sem JavaScript, a matriz completa e as demais tabelas continuam disponíveis.
 
 O HTML funciona sem servidor, pacotes de frontend ou requisições de rede.
 Os links para referências só usam internet quando abertos. A impressão inclui
-os detalhes e mantém a busca atual. A fixture oficial do repositório é
+os detalhes e mantém busca e comparação atuais, exceto a matriz completa,
+que é larga e fica disponível somente na tela/CSV. A fixture do repositório é
 identificada explicitamente como sintética pelo hash do snapshot.
 
 Consulte [CADERNO.md](docs/CADERNO.md) para arquitetura, limites e validação.
+O caderno versão 2 é salvo em `dados/cadernos/v2/`, preservando os HTMLs
+anteriores. A origem e a extração da referência estão em
+[REFERENCIA_MUNICIPAL.md](docs/REFERENCIA_MUNICIPAL.md).
 
 ## Testes e próximos passos
 
@@ -225,18 +257,19 @@ Consulte [CADERNO.md](docs/CADERNO.md) para arquitetura, limites e validação.
 PYTHONPATH=src python3 -m unittest discover -s testes -p 'test_*.py' -v
 ```
 
-Os 143 testes passaram com Python 3.12.14 no Linux. Cobrem limites, snapshots,
+Os 169 testes passaram com Python 3.12.14 no Linux. Cobrem limites, snapshots,
 identidade decimal e municipal, fusos, dias vazios, nomes divergentes, ausências,
-exportação, verificação de resultados, HTML, falhas e CLI. O workflow executa
+exportação, matriz, referência IBGE, compatibilidade histórica, HTML, falhas e CLI. O workflow executa
 os testes offline; não baixa dados reais nem instala navegador.
 
 As tabelas do CSV real foram comparadas com uma contagem independente do arquivo:
-31 dias, 50 códigos e soma 1.842 em ambas. A execução também identificou
+31 dias, 50 códigos, soma 1.842 e todas as 1.550 células da matriz coincidiram.
+A execução também identificou
 11 valores ausentes de risco de fogo entre os selecionados, tratados pelas regras
 de ausência, sem gerar problemas opcionais.
 
-Os próximos passos são conferir a referência territorial e as condições de uso
-da fonte e avaliar a exploração do caderno com usuários. Ainda faltam
-cruzamento município × dia, avaliação sistemática de recursos, quota do SQLite
+Os próximos passos são avaliar a exploração do caderno com usuários,
+conferir a malha e a localização espacial dos pontos e aprofundar condições
+de uso e interpretação da fonte. Ainda faltam avaliação sistemática de recursos, quota do SQLite
 temporário e controle global de execuções concorrentes. Detalhes de validação,
 identidade e interpretação estão em [docs/DADOS.md](docs/DADOS.md).

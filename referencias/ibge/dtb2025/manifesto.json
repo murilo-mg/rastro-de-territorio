@@ -1,0 +1,16 @@
+{
+  "acesso_em_utc": "2026-10-09",
+  "csv_sha256": "2de2aaa24b40c84d83d957a69c4fa1ef5526df3016de3b5ecf8ec7915afeff6d",
+  "data_base": "2025-12-31",
+  "edicao": 2025,
+  "estado_id": 13,
+  "fonte_url": "https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/divisao_territorial/2025/DTB_2025.zip",
+  "instituicao": "IBGE",
+  "membro_zip": "RELATORIO_DTB_BRASIL_2025_MUNICIPIOS.ods",
+  "normalizacao_nomes": "NFKD-sem-marcas-casefold-espacos:v1",
+  "ods_sha256": "a0606b9706c248138131511287e582a9293ba786096e0395192be36108d029fa",
+  "produto": "Divisão Territorial Brasileira",
+  "quantidade_municipios": 62,
+  "versao_referencia": 1,
+  "zip_sha256": "d077a0e48c36cf18bcc96268b4a436200c014c6b8522c1a62d894acaf39dad27"
+}

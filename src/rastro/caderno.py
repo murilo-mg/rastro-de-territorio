@@ -12,7 +12,7 @@ from string import Template
 from .resultado import verificar_resultado
 
 
-VERSAO_CADERNO = 1
+VERSAO_CADERNO = 2
 FIXTURE_SHA256 = "82d677fe686df80c69a5dffab3988446c640580f01cdc160a7c489101032e23f"
 LIMITE_GRUPOS = 10_000
 
@@ -31,12 +31,12 @@ h2{font-size:23px;line-height:1.3;margin:0 0 9px;letter-spacing:-.025em}h3{font-
 .numero{display:block;font-size:34px;line-height:1.25;letter-spacing:-.04em;font-variant-numeric:tabular-nums}.indicador span:last-child{display:block;color:var(--muted);font-size:13px;margin-top:8px}
 section{border:1px solid var(--linha);background:var(--fundo);padding:26px;margin:0 0 25px}.secao-topo{display:flex;justify-content:space-between;gap:20px;align-items:baseline}.nota{font-size:14px;color:var(--muted)}.selo{font-size:12px;color:var(--rio);white-space:nowrap}
 .grafico{overflow-x:auto}.grafico svg{display:block;width:100%;min-width:600px;height:auto}.grade{stroke:var(--linha);stroke-width:1}.barra{fill:var(--rio)}.eixo{fill:var(--muted);font-size:12px}.valor{fill:var(--tinta);font-size:11px}
-.filtros{display:flex;gap:18px;align-items:end;flex-wrap:wrap;margin:22px 0 14px}.filtros label{font-size:14px;display:flex;flex-direction:column;gap:5px}.filtros label:first-child{flex:1;min-width:200px}
+.filtros{display:flex;gap:18px;align-items:end;flex-wrap:wrap;margin:22px 0 14px}.filtros label{font-size:14px;display:flex;flex-direction:column;gap:5px}.filtros label:first-child{flex:1;min-width:200px}.selecao{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin:20px 0}.selecao label{display:flex;flex-direction:column;min-width:0;font-size:14px}.selecao select{width:100%;min-width:0}.legenda-serie{display:flex;gap:20px;flex-wrap:wrap;font-size:14px}.serie{fill:none;stroke-width:3}.serie-0{stroke:#1b6353}.serie-1{stroke:#a16624;stroke-dasharray:8 4}.serie-2{stroke:#466a9e;stroke-dasharray:2 4}.legenda-0{color:#1b6353}.legenda-1{color:#80501b}.legenda-2{color:#466a9e}
 input,select,button{font:inherit;color:var(--tinta);background:var(--fundo);border:1px solid #8d9f93;border-radius:3px;padding:9px 12px}button{cursor:pointer}button:hover{background:#edf1e9}input{width:100%}input:disabled,select:disabled,button:disabled{opacity:.6;cursor:default}
 .tabela{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}caption{text-align:left;color:var(--muted);padding:8px 0 13px}th,td{border-bottom:1px solid var(--linha);text-align:left;padding:12px 10px;vertical-align:top}th{font-weight:650;background:#edf1e9}td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.codigo{font:13px ui-monospace,monospace;white-space:nowrap}.nomes{min-width:170px;overflow-wrap:anywhere}.observacao{max-width:220px;color:var(--muted)}
 .qualidade{display:grid;grid-template-columns:1fr 1fr;gap:30px}.listas{margin:10px 0;padding-left:20px}.listas li{margin-bottom:9px}details{margin:17px 0}summary{cursor:pointer;font-weight:600;padding:5px 0}code{font:13px/1.6 ui-monospace,monospace;overflow-wrap:anywhere}dl{display:grid;grid-template-columns:200px minmax(0,1fr);gap:10px 22px;font-size:14px}dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}footer{font-size:13px;color:var(--muted);padding:0 0 28px}.imprimir{float:right;margin:0 0 8px 18px}noscript p{background:#eee8d8;padding:14px}.sem-linhas{text-align:center;padding:28px}.fonte{margin-top:20px}
-@media(max-width:700px){main,.marca,footer{width:calc(100% - 28px)}header{padding-top:28px}section{padding:17px}.indicadores{grid-template-columns:repeat(2,1fr)}.indicador:nth-child(2){border-right:0}.indicador:nth-child(-n+2){border-bottom:1px solid var(--linha)}.numero{font-size:28px}.qualidade{grid-template-columns:1fr;gap:20px}.secao-topo{display:block}.marca{font-size:12px}dl{grid-template-columns:1fr;gap:5px}dd{margin-bottom:12px}.imprimir{float:none;margin:0 0 18px}}
-@media print{body{background:white;font-size:11px}.marca,main,footer{width:100%}.filtros,.imprimir,.pular,noscript{display:none}header{padding:12px 0}h1{font-size:28px}h2{font-size:19px}section{padding:15px;break-inside:auto}.indicadores,.grafico,.qualidade,dl{break-inside:avoid}.tabela,.grafico{overflow:visible}table{font-size:10px}tr{break-inside:avoid}thead{display:table-header-group}th,td{padding:6px}.grafico svg{min-width:0}.indicador{padding:12px}.numero{font-size:26px}.nota{font-size:11px}a{color:inherit}.observacao{max-width:150px}}
+@media(max-width:700px){main,.marca,footer{width:calc(100% - 28px)}header{padding-top:28px}section{padding:17px}.indicadores{grid-template-columns:repeat(2,1fr)}.indicador:nth-child(2){border-right:0}.indicador:nth-child(-n+2){border-bottom:1px solid var(--linha)}.numero{font-size:28px}.qualidade,.selecao{grid-template-columns:1fr;gap:20px}.secao-topo{display:block}.marca{font-size:12px}dl{grid-template-columns:1fr;gap:5px}dd{margin-bottom:12px}.imprimir{float:none;margin:0 0 18px}}
+@media print{body{background:white;font-size:11px}.marca,main,footer{width:100%}.filtros,.selecao,.imprimir,.pular,noscript,#limpar-comparacao{display:none}.matriz-completa{display:none}header{padding:12px 0}h1{font-size:28px}h2{font-size:19px}section{padding:15px;break-inside:auto}.indicadores,.grafico,.qualidade,dl{break-inside:avoid}.tabela,.grafico{overflow:visible}table{font-size:10px}tr{break-inside:avoid}thead{display:table-header-group}th,td{padding:6px}.grafico svg{min-width:0}.indicador{padding:12px}.numero{font-size:26px}.nota{font-size:11px}a{color:inherit}.observacao{max-width:150px}}
 """.strip()
 
 
@@ -45,6 +45,7 @@ JS = r"""
 const dados = JSON.parse(document.getElementById("dados").textContent);
 const grupos = dados.manifesto.resultado.agregacoes.por_municipio;
 const total = dados.manifesto.resultado.resumo.selecionadas;
+const conferencias = new Map((dados.manifesto.resultado.conferencia_municipal?.por_municipio || []).map(g=>[g.municipio_id,g]));
 const formato = new Intl.NumberFormat("pt-BR");
 const percentual = new Intl.NumberFormat("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1});
 const busca = document.getElementById("busca");
@@ -54,6 +55,17 @@ const estado = document.getElementById("estado-filtro");
 const normalizar = texto => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 const codigo = g => g.municipio_id === null ? "Sem código" : g.municipio_id;
 const compararCodigo = (a, b) => (a.municipio_id === null) - (b.municipio_id === null) || (a.municipio_id || "").localeCompare(b.municipio_id || "");
+function referenciaTexto(g) {
+  const c=conferencias.get(g.municipio_id);
+  if (!c) return "";
+  if (c.situacao_codigo === "ausente") return "Sem código para conferir";
+  if (c.situacao_codigo === "nao_encontrado") return "Código não encontrado na DTB 2025";
+  const notas=[];
+  if (c.nomes_divergentes.length) notas.push("nome(s) divergente(s): " + c.nomes_divergentes.join(" / "));
+  if (c.nomes_equivalentes.length) notas.push("equivalente após normalização");
+  if (!g.nomes.length) notas.push("nome ausente na fonte");
+  return c.nome_referencia + (notas.length ? " · " + notas.join("; ") : " · nome igual");
+}
 function atualizar() {
   const termo = normalizar(busca.value.trim());
   const linhas = grupos.filter(g => normalizar([codigo(g), ...g.nomes].join(" ")).includes(termo));
@@ -67,12 +79,13 @@ function atualizar() {
     if (g.sem_nome) notas.push(formato.format(g.sem_nome) + " sem nome");
     const valores = [codigo(g), g.nomes.length ? g.nomes.join(" / ") : "Nome não informado", formato.format(g.deteccoes), total ? percentual.format(100*g.deteccoes/total) + "%" : "—", notas.join("; ") || "—"];
     const classes = ["codigo", "nomes", "num", "num", "observacao"];
+    if (dados.manifesto.referencia_municipal) {valores.push(referenciaTexto(g));classes.push("observacao");}
     valores.forEach((valor, i) => { const td = document.createElement("td"); td.className=classes[i]; td.textContent=valor; tr.append(td); });
     fragmento.append(tr);
   }
   if (!linhas.length) {
     const tr = document.createElement("tr"), td = document.createElement("td");
-    td.colSpan=5; td.className="sem-linhas"; td.textContent=grupos.length ? "Nenhum grupo corresponde à busca." : "Nenhuma detecção selecionada.";
+    td.colSpan=dados.manifesto.referencia_municipal ? 6 : 5; td.className="sem-linhas"; td.textContent=grupos.length ? "Nenhum grupo corresponde à busca." : "Nenhuma detecção selecionada.";
     tr.append(td); fragmento.append(tr);
   }
   corpo.replaceChildren(fragmento);
@@ -88,6 +101,57 @@ let detalhesAbertos = null;
 window.addEventListener("beforeprint", () => { if (detalhesAbertos !== null) return; detalhesAbertos=[...document.querySelectorAll("details")].map(d=>d.open); document.querySelectorAll("details").forEach(d=>d.open=true); });
 window.addEventListener("afterprint", () => { if (detalhesAbertos === null) return; document.querySelectorAll("details").forEach((d,i)=>d.open=detalhesAbertos[i]); detalhesAbertos=null; });
 atualizar();
+
+const matriz = dados.manifesto.resultado.agregacoes.por_municipio_dia_utc;
+if (matriz) {
+  const seletores=[1,2,3].map(i=>document.getElementById("comparar-"+i));
+  const valoresPorCodigo=new Map(matriz.map(g=>[g.municipio_id,g.deteccoes_por_dia]));
+  const gruposPorCodigo=new Map(grupos.map(g=>[g.municipio_id,g]));
+  const datas=dados.manifesto.resultado.agregacoes.por_dia_utc.map(d=>d.dia_utc);
+  const status=document.getElementById("estado-comparacao");
+  const svg=document.getElementById("grafico-comparacao");
+  const legenda=document.getElementById("legenda-comparacao");
+  const resumo=document.getElementById("resumo-comparacao");
+  const tabela=document.getElementById("valores-comparacao");
+  const painel=document.getElementById("dados-comparacao");
+  const ns="http://www.w3.org/2000/svg";
+  function elemento(tag,attrs={},texto=null) { const el=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs)) el.setAttribute(k,String(v));if(texto!==null) el.textContent=texto;return el; }
+  function rotulo(c) {const g=gruposPorCodigo.get(c);return c===null ? "Sem código (grupo não territorial)" : c+" · "+(conferencias.get(c)?.nome_referencia || g.nomes.join(" / ") || "Nome não informado");}
+  function atualizarComparacao() {
+    const selecionados=[...new Set(seletores.map(s=>s.value).filter(Boolean))];
+    const codigos=selecionados.map(c=>c==="@sem_codigo" ? null : c);
+    painel.hidden=!codigos.length;
+    for (const s of seletores) for (const o of s.options) o.disabled=Boolean(o.value && o.value!==s.value && selecionados.includes(o.value));
+    svg.replaceChildren();legenda.replaceChildren();resumo.replaceChildren();tabela.replaceChildren();
+    if (!codigos.length) {status.textContent=grupos.length ? "Selecione de um a três grupos para comparar." : "Nenhuma detecção selecionada; não há grupos para comparar.";return;}
+    const series=codigos.map(c=>valoresPorCodigo.get(c));
+    const maximo=Math.max(1,...series.flat());
+    svg.append(elemento("title",{},"Contagens diárias dos grupos selecionados"),elemento("desc",{},"Eixo vertical comum começando em zero. Valores exatos na tabela da comparação."));
+    for (const [n,y] of [[0,225],[maximo,35]]) {svg.append(elemento("line",{x1:70,x2:1050,y1:y,y2:y,class:"grade"}),elemento("text",{x:62,y:y+4,"text-anchor":"end",class:"eixo"},formato.format(n)));}
+    datas.forEach((d,i)=>svg.append(elemento("text",{x:80+i*32,y:248,"text-anchor":"middle",class:"eixo"},d.slice(-2))));
+    svg.append(elemento("text",{x:1050,y:277,"text-anchor":"end",class:"eixo"},"Dia de agosto (UTC)"));
+    let soma=0;
+    codigos.forEach((c,j)=>{
+      const valores=series[j], g=gruposPorCodigo.get(c), nome=rotulo(c);
+      const pontos=valores.map((n,i)=>(80+i*32)+","+(225-190*n/maximo)).join(" ");
+      const linha=elemento("polyline",{points:pontos,class:"serie serie-"+j});linha.append(elemento("title",{},nome));svg.append(linha);
+      const item=document.createElement("span");item.className="legenda-"+j;item.textContent=(j+1)+". "+nome;legenda.append(item);
+      const maior=Math.max(...valores), picos=maior ? datas.filter((d,i)=>valores[i]===maior).join(", ") : "Sem detecções";
+      const tr=document.createElement("tr");
+      [nome,formato.format(g.deteccoes),total ? percentual.format(100*g.deteccoes/total)+"%" : "—",formato.format(valores.filter(n=>n>0).length),formato.format(maior),picos].forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;if(i>0 && i<5) td.className="num";tr.append(td);});
+      resumo.append(tr);soma+=g.deteccoes;
+    });
+    const cab=document.createElement("tr");
+    ["Dia UTC",...codigos.map(rotulo)].forEach(v=>{const th=document.createElement("th");th.scope="col";th.textContent=v;cab.append(th);});
+    tabela.append(cab);
+    datas.forEach((d,i)=>{const tr=document.createElement("tr");[d,...series.map(s=>formato.format(s[i]))].forEach((v,j)=>{const td=document.createElement("td");td.textContent=v;if(j) td.className="num";tr.append(td);});tabela.append(tr);});
+    status.textContent=codigos.length+" grupo(s) selecionado(s) · "+formato.format(soma)+" de "+formato.format(total)+" detecções. Eixo comum em contagens absolutas; percentuais usam o total do recorte.";
+  }
+  for(const s of seletores) {s.disabled=false;s.addEventListener("change",atualizarComparacao);}
+  const limpar=document.getElementById("limpar-comparacao");limpar.disabled=false;
+  limpar.addEventListener("click",()=>{seletores.forEach(s=>s.value="");atualizarComparacao();seletores[0].focus();});
+  atualizarComparacao();
+}
 """.strip()
 
 
@@ -113,15 +177,16 @@ PAGINA = Template("""<!doctype html>
 <div class="grafico">$grafico</div><p class="nota">$pico</p>
 <details><summary>Consultar os valores diários</summary><div class="tabela"><table>
 <caption>Contagem de detecções por dia UTC</caption><thead><tr><th scope="col">Dia UTC</th><th scope="col" class="num">Detecções</th></tr></thead><tbody>$dias_tabela</tbody></table></div></details></section>
+$comparacao
 <section aria-labelledby="municipios-titulo"><div class="secao-topo"><h2 id="municipios-titulo">Distribuição por município informado</h2><span class="selo">Agregação por código</span></div>
-<p class="nota">Código e nomes vêm do CSV. Não houve conferência com uma malha territorial. Todos os nomes de cada grupo estão preservados.</p>
+<p class="nota">$nota_referencia Todos os nomes de cada grupo estão preservados. A busca abaixo filtra somente esta tabela.</p>
 <noscript><p>JavaScript está desativado. As tabelas completas, os gráficos e a procedência continuam disponíveis; busca e ordenação precisam de JavaScript.</p></noscript>
 <div class="filtros"><label for="busca">Buscar código ou nome<input id="busca" type="search" placeholder="Ex.: Apuí ou 1300144" aria-controls="municipios" disabled></label>
 <label for="ordem">Ordenar<select id="ordem" aria-controls="municipios" disabled><option value="deteccoes">Mais detecções</option><option value="codigo">Código crescente</option></select></label>
 <button id="limpar" type="button" disabled>Limpar busca</button></div>
 <p class="nota" id="estado-filtro" role="status" aria-live="polite">$estado_filtro</p>
 <div class="tabela"><table><caption>Participação no total de detecções selecionadas; não é taxa por área ou população.</caption>
-<thead><tr><th scope="col">Código</th><th scope="col">Nome(s) na fonte</th><th scope="col" class="num">Detecções</th><th scope="col" class="num">% do recorte</th><th scope="col">Observações</th></tr></thead><tbody id="municipios">$municipios_tabela</tbody></table></div></section>
+<thead><tr><th scope="col">Código</th><th scope="col">Nome(s) na fonte</th><th scope="col" class="num">Detecções</th><th scope="col" class="num">% do recorte</th><th scope="col">Observações</th>$coluna_referencia</tr></thead><tbody id="municipios">$municipios_tabela</tbody></table></div></section>
 <section aria-labelledby="qualidade-titulo"><h2 id="qualidade-titulo">O que entrou na contagem</h2><div class="qualidade"><div>
 <h3>Leitura e seleção</h3><dl>$resumo</dl>
 <p class="nota">Problemas opcionais contam ocorrências por campo e podem se acumular na mesma observação. Eles não excluem a detecção selecionada.</p></div><div>
@@ -130,14 +195,15 @@ PAGINA = Template("""<!doctype html>
 <li>O recorte usa o estado <code>13</code>, satélite exato <code>AQUA_M-T</code> e o intervalo de 01/08/2025 inclusive até 01/09/2025 exclusive, em UTC.</li>
 <li>Uma contagem maior não mede, sozinha, gravidade, extensão queimada ou risco. Cobertura e condições de observação precisam ser consideradas.</li>
 <li>Ausência de detecções não comprova ausência de fogo. A tabela só lista códigos que apareceram entre os selecionados; ela não é um cadastro de todos os municípios do Amazonas.</li>
-<li>Os percentuais usam todas as detecções selecionadas, inclusive as sem código. Buscar um município filtra apenas a tabela. Esta exportação não contém o cruzamento município × dia.</li>
+<li>$nota_matriz</li>
 <li>Os arquivos passaram por conferência interna. Para reproduzir a análise, preserve o snapshot e execute a revisão correspondente; o hash não comprova a procedência científica.</li></ul>
 <p class="nota fonte">Referência do projeto: INPE / Programa Queimadas. As referências abaixo exigem internet quando abertas: <a href="https://data.inpe.br/queimadas/dados-abertos/" target="_blank" rel="noopener noreferrer">dados abertos</a> e <a href="https://data.inpe.br/queimadas/faq/" target="_blank" rel="noopener noreferrer">perguntas frequentes</a>. Consulte as condições de uso antes de publicar derivados. A data da primeira exportação abaixo não é a data de acesso à fonte.</p></section>
 <section aria-labelledby="origem-titulo"><button id="imprimir" class="imprimir" type="button" disabled>Imprimir / salvar PDF</button>
 <h2 id="origem-titulo">Rastro deste resultado</h2><p class="nota">Verificados na geração: esquema, hash canônico, calendário, somas e correspondência dos CSVs. O contexto é declarado e fica fora do hash da execução.</p><dl>$proveniencia</dl>
+$rastro_referencia
 <details><summary>Contexto da primeira exportação</summary><dl>$contexto</dl></details>
-<p class="nota">O HTML é uma apresentação derivada. Para conferir alterações, gere-o novamente com os mesmos arquivos e a mesma versão do gerador e compare os bytes. Não substitui os quatro arquivos da exportação.</p></section>
-</main><footer>Caderno $versao · sem bibliotecas externas, fontes remotas ou coleta de navegação. A impressão mantém a busca atual e inclui os detalhes.</footer>
+<p class="nota">O HTML é uma apresentação derivada. Para conferir alterações, gere-o novamente com os mesmos arquivos e a mesma versão do gerador e compare os bytes. Não substitui os arquivos da exportação.</p></section>
+</main><footer>Caderno $versao · sem bibliotecas externas, fontes remotas ou coleta de navegação. A impressão mantém busca e comparação atuais e inclui os detalhes, exceto a matriz completa.</footer>
 <script type="application/json" id="dados">$dados</script><script>$js</script></body></html>
 """)
 
@@ -174,7 +240,22 @@ def _grafico(dias):
     return "".join(partes)
 
 
-def _linha_municipio(g, total):
+def _referencia_texto(g, c):
+    if c["situacao_codigo"] == "ausente":
+        return "Sem código para conferir"
+    if c["situacao_codigo"] == "nao_encontrado":
+        return "Código não encontrado na DTB 2025"
+    notas = []
+    if c["nomes_divergentes"]:
+        notas.append("nome(s) divergente(s): " + " / ".join(c["nomes_divergentes"]))
+    if c["nomes_equivalentes"]:
+        notas.append("equivalente após normalização")
+    if not g["nomes"]:
+        notas.append("nome ausente na fonte")
+    return c["nome_referencia"] + " · " + ("; ".join(notas) or "nome igual")
+
+
+def _linha_municipio(g, total, conferencia=None):
     notas = []
     if g["municipio_id"] is None:
         notas.append("Código ausente ou inválido; grupo não territorial")
@@ -185,9 +266,12 @@ def _linha_municipio(g, total):
     # Arredonda metade para cima, como Intl.NumberFormat no navegador.
     decimos = (2000 * g["deteccoes"] + total) // (2 * total) if total else 0
     percentual = f"{decimos // 10},{decimos % 10}%" if total else "—"
-    valores = (g["municipio_id"] or "Sem código", " / ".join(g["nomes"]) or "Nome não informado",
-               _numero(g["deteccoes"]), percentual, "; ".join(notas) or "—")
-    classes = ("codigo", "nomes", "num", "num", "observacao")
+    valores = [g["municipio_id"] or "Sem código", " / ".join(g["nomes"]) or "Nome não informado",
+               _numero(g["deteccoes"]), percentual, "; ".join(notas) or "—"]
+    classes = ["codigo", "nomes", "num", "num", "observacao"]
+    if conferencia is not None:
+        valores.append(_referencia_texto(g, conferencia))
+        classes.append("observacao")
     return "<tr>" + "".join(f'<td class="{c}">{_esc(v)}</td>' for c, v in zip(classes, valores)) + "</tr>"
 
 
@@ -195,10 +279,42 @@ def _hash_csp(texto):
     return base64.b64encode(hashlib.sha256(texto.encode("utf-8")).digest()).decode("ascii")
 
 
+def _comparacao_html(a, conferencias):
+    matriz = a.get("por_municipio_dia_utc")
+    if matriz is None:
+        return '<section><h2>Comparação diária por município</h2><p class="nota">Este resultado histórico não contém a matriz município × dia. Reexecute o snapshot com as regras 4 para gerar a comparação.</p></section>'
+    grupos = a["por_municipio"]
+    rotulos = {}
+    for g in grupos:
+        c = g["municipio_id"]
+        nome = conferencias[c]["nome_referencia"] or " / ".join(g["nomes"]) or "Nome não informado"
+        rotulos[c] = (c + " · " + nome) if c else "Sem código (grupo não territorial)"
+    opcoes = '<option value="">Não selecionar</option>' + "".join(
+        f'<option value="{c or "@sem_codigo"}">{_esc(nome)}</option>' for c, nome in rotulos.items()
+    )
+    seletores = "".join(f'<label for="comparar-{i}">Grupo {i}<select id="comparar-{i}" disabled>{opcoes}</select></label>' for i in (1, 2, 3))
+    cabecalho = '<th scope="col">Código / nome de referência</th>' + "".join(
+        f'<th scope="col" class="num">{d["dia_utc"]}</th>' for d in a["por_dia_utc"]
+    )
+    linhas = "".join('<tr><th scope="row" class="nomes">' + _esc(rotulos[g["municipio_id"]]) + '</th>'
+                     + "".join(f'<td class="num">{_numero(n)}</td>' for n in g["deteccoes_por_dia"]) + '</tr>' for g in matriz)
+    return f'''<section aria-labelledby="comparacao-titulo"><h2 id="comparacao-titulo">Comparar a distribuição diária</h2>
+<p class="nota">Selecione de um a três grupos. O gráfico usa contagens absolutas e o mesmo eixo, começando em zero. Os indicadores gerais acima continuam mostrando o recorte completo. Os rótulos usam o nome cadastral quando disponível; os nomes da fonte continuam na tabela municipal.</p>
+<div class="selecao">{seletores}</div><button id="limpar-comparacao" type="button" disabled>Limpar comparação</button>
+<p id="estado-comparacao" class="nota" role="status" aria-live="polite">Selecione de um a três grupos para comparar. A seleção interativa precisa de JavaScript.</p>
+<div id="dados-comparacao" hidden><div class="grafico"><svg id="grafico-comparacao" viewBox="0 0 1080 285" role="img" aria-label="Contagens diárias dos grupos selecionados"></svg></div>
+<p id="legenda-comparacao" class="legenda-serie"></p><div class="tabela"><table><caption>Resumo dos grupos selecionados; os percentuais usam todas as detecções do recorte.</caption><thead><tr><th scope="col">Grupo</th><th scope="col" class="num">Total</th><th scope="col" class="num">% do recorte</th><th scope="col" class="num">Dias com detecções</th><th scope="col" class="num">Máximo diário</th><th scope="col">Dia(s) UTC do máximo</th></tr></thead><tbody id="resumo-comparacao"></tbody></table></div>
+<details><summary>Valores diários da comparação</summary><div class="tabela"><table><caption>Contagens exatas dos 31 dias UTC para a seleção atual</caption><tbody id="valores-comparacao"></tbody></table></div></details></div>
+<details class="matriz-completa"><summary>Matriz completa município × dia</summary><p class="nota">Todos os grupos observados e os 31 dias, inclusive zeros. Esta tabela permanece disponível sem JavaScript; não entra na impressão.</p><div class="tabela"><table><caption>Matriz completa; municípios não observados não são acrescentados.</caption><thead><tr>{cabecalho}</tr></thead><tbody>{linhas}</tbody></table></div></details></section>'''
+
+
 def _renderizar(verificado):
     r, contexto = verificado.execucao, verificado.contexto
     a, m = r.agregacoes, r.manifesto
     grupos = a["por_municipio"]
+    conferencia = m["resultado"].get("conferencia_municipal")
+    conferencias = {c["municipio_id"]: c for c in conferencia["por_municipio"]} if conferencia else {}
+    referencia = m.get("referencia_municipal")
     if len(grupos) > LIMITE_GRUPOS:
         raise ValueError("O caderno suporta até 10.000 grupos municipais")
     dias = a["por_dia_utc"]
@@ -212,9 +328,9 @@ def _renderizar(verificado):
             f'Maior contagem diária: {_numero(maximo)} detecções. Dia(s) UTC: ' +
             ", ".join(d["dia_utc"] for d in dias if d["deteccoes"] == maximo) + ".")
     grupos_ordenados = sorted(grupos, key=lambda g: (-g["deteccoes"], g["municipio_id"] is None, g["municipio_id"] or ""))
-    tabela = "".join(_linha_municipio(g, total) for g in grupos_ordenados)
+    tabela = "".join(_linha_municipio(g, total, conferencias.get(g["municipio_id"])) for g in grupos_ordenados)
     if not tabela:
-        tabela = '<tr><td colspan="5" class="sem-linhas">Nenhuma detecção selecionada.</td></tr>'
+        tabela = f'<tr><td colspan="{6 if referencia else 5}" class="sem-linhas">Nenhuma detecção selecionada.</td></tr>'
     campos = (("dias_sem_chuva", "Dias sem chuva", "numero_dias_sem_chuva"),
               ("precipitacao", "Precipitação", "precipitacao"),
               ("risco_fogo", "Risco de fogo", "risco_fogo"), ("frp", "FRP", "frp"),
@@ -231,6 +347,21 @@ def _renderizar(verificado):
         total=_numero(total), municipios=_numero(a["municipios_com_codigo"]),
         dias_com_deteccao=sum(d["deteccoes"] > 0 for d in dias), sem_codigo=_numero(a["sem_municipio_id"]),
         grafico=_grafico(dias), pico=_esc(pico), municipios_tabela=tabela,
+        comparacao=_comparacao_html(a, conferencias),
+        nota_referencia=("Código e nomes vêm do CSV. A conferência cadastral usa IBGE DTB 2025 (data-base 31/12/2025), preservando os nomes originais. Ela não verifica a localização dos pontos nem a edição usada pelo INPE em agosto." if referencia else "Código e nomes vêm do CSV. Este resultado histórico não inclui conferência com a referência municipal."),
+        coluna_referencia='<th scope="col">IBGE DTB 2025</th>' if referencia else "",
+        nota_matriz=("Os percentuais usam todas as detecções selecionadas, inclusive as sem código. A comparação diária usa a matriz município × dia; buscar um nome na tabela municipal filtra somente a tabela." if referencia else "Os percentuais usam todas as detecções selecionadas, inclusive as sem código. Este resultado histórico não contém o cruzamento município × dia."),
+        rastro_referencia=("<details><summary>Referência cadastral preservada — IBGE DTB 2025</summary><dl>" + _lista_definicoes((
+            ("Data-base", referencia["data_base"]), ("Data de acesso (UTC)", referencia["acesso_em_utc"]),
+            ("Municípios na referência", referencia["quantidade_municipios"]),
+            ("Códigos encontrados no recorte", conferencia["codigos_encontrados"]),
+            ("Códigos não encontrados", conferencia["codigos_nao_encontrados"]),
+            ("Grupos com nomes divergentes", conferencia["grupos_com_nomes_divergentes"]),
+            ("SHA-256 do ODS original", referencia["ods_sha256"]),
+            ("SHA-256 do CSV municipal", referencia["csv_sha256"]),
+            ("SHA-256 do manifesto da referência", referencia["manifesto_sha256"]),
+            ("Normalização dos nomes", referencia["normalizacao_nomes"]),
+        )) + '<dt>Arquivo oficial</dt><dd><a href="' + _esc(referencia["fonte_url"]) + '" target="_blank" rel="noopener noreferrer">DTB_2025.zip no IBGE</a></dd></dl></details>' if referencia else ""),
         estado_filtro=f'{_numero(len(grupos))} de {_numero(len(grupos))} grupos exibidos · {_numero(total)} de {_numero(total)} detecções. Percentuais usam o total do recorte.',
         dias_tabela="".join(f'<tr><td>{d["dia_utc"]}</td><td class="num">{_numero(d["deteccoes"])}</td></tr>' for d in dias),
         resumo=_lista_definicoes((titulo_campo, _numero(r.resumo[campo]))
@@ -239,7 +370,7 @@ def _renderizar(verificado):
         proveniencia=_lista_definicoes((
             ("SHA-256 da execução", r.execucao_sha256), ("SHA-256 do snapshot", r.snapshot_sha256),
             ("Tamanho do snapshot", f"{_numero(r.snapshot_bytes)} bytes"),
-            ("Perfil de leitura", m["perfil"]), ("Versões", "Manifesto 2 · regras 3 · agregações 1"),
+            ("Perfil de leitura", m["perfil"]), ("Versões", f'Manifesto {m["versao_manifesto_execucao"]} · regras {m["versao_regras"]} · agregações {a["versao_agregacoes"]}'),
             ("IDs selecionados únicos", _numero(r.ids_selecionados_unicos)),
             ("Códigos com nomes divergentes", _numero(a["municipios_com_nomes_divergentes"])),
         )),
@@ -260,7 +391,7 @@ def gerar_caderno(diretorio_resultado, destino=None):
     """
     verificado = verificar_resultado(diretorio_resultado)
     conteudo = _renderizar(verificado)
-    destino = Path(destino) if destino is not None else Path("dados/cadernos") / f"{verificado.execucao.execucao_sha256}.html"
+    destino = Path(destino) if destino is not None else Path("dados/cadernos/v2") / f"{verificado.execucao.execucao_sha256}.html"
     if destino.suffix.lower() != ".html":
         raise ValueError("O destino do caderno precisa ter extensão .html")
     if destino.is_symlink():

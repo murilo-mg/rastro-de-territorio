@@ -33,9 +33,10 @@ class TestManifestoExecucao(unittest.TestCase):
 
         self.assertEqual(
             resultado.manifesto["versao_manifesto_execucao"],
-            2,
+            3,
         )
-        self.assertEqual(resultado.manifesto["versao_regras"], 3)
+        self.assertEqual(resultado.manifesto["versao_regras"], 4)
+        self.assertEqual(resultado.manifesto["referencia_municipal"]["edicao"], 2025)
         self.assertEqual(resultado.manifesto["recorte"], {
             "estado_id": 13, "satelite": "AQUA_M-T",
             "inicio_inclusive": "2025-08-01T00:00:00+00:00",

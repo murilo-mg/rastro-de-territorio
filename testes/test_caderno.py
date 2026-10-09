@@ -67,7 +67,7 @@ class TestCaderno(ExportacaoTemporaria):
         self.assertIn("MANAUS", texto)
         self.assertIn("2025-08-31", texto)
         self.assertEqual(sum(tag == "rect" for tag, _ in pagina.elementos), 31)
-        self.assertEqual(sum(tag == "tbody" for tag, _ in pagina.elementos), 3)
+        self.assertEqual(sum(tag == "tbody" for tag, _ in pagina.elementos), 6)
 
     def test_csp_permite_apenas_scripts_e_estilos_gerados(self):
         _, texto = self.gerar()
@@ -141,7 +141,7 @@ class TestCaderno(ExportacaoTemporaria):
     def test_recusa_gravar_dentro_do_resultado(self):
         with self.assertRaisesRegex(ValueError, "fora da pasta"):
             gerar_caderno(self.pasta, self.pasta / "caderno.html")
-        self.assertEqual(len(list(self.pasta.iterdir())), 4)
+        self.assertEqual(len(list(self.pasta.iterdir())), 6)
 
     def test_recusa_saida_symlink_e_extensao_incorreta(self):
         alvo = self.raiz / "destino.html"

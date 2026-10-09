@@ -74,14 +74,26 @@ class AcumuladorAgregacoes:
         por_municipio = [municipios[k] for k in sorted(
             municipios, key=lambda k: (k == "", k)
         )]
+        por_codigo_dia = dict(((codigo, dia), quantidade) for codigo, dia, quantidade
+                              in self.conexao.execute("""
+            SELECT municipio_id, dia, SUM(deteccoes)
+            FROM agregados GROUP BY municipio_id, dia
+        """))
+        matriz = [{"municipio_id": grupo["municipio_id"], "deteccoes_por_dia": [
+            por_codigo_dia.get((grupo["municipio_id"] or "", d["dia_utc"]), 0)
+            for d in por_dia
+        ]} for grupo in por_municipio]
         if (sum(x["deteccoes"] for x in por_dia) != total
-                or sum(x["deteccoes"] for x in por_municipio) != total):
+                or sum(x["deteccoes"] for x in por_municipio) != total
+                or any(sum(x["deteccoes_por_dia"][i] for x in matriz) != d["deteccoes"]
+                       for i, d in enumerate(por_dia))):
             raise ValueError("As agregações não correspondem ao total selecionado")
 
         return {
-            "versao_agregacoes": 1,
+            "versao_agregacoes": 2,
             "por_dia_utc": por_dia,
             "por_municipio": por_municipio,
+            "por_municipio_dia_utc": matriz,
             "municipios_com_codigo": sum(x["municipio_id"] is not None for x in por_municipio),
             "sem_municipio_id": self.ausencias["municipio_id"],
             "municipios_com_nomes_divergentes": sum(x["nomes_divergentes"] for x in por_municipio),
