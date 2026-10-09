@@ -27,6 +27,9 @@ Funcionam atualmente:
 - Manifesto de execução retornado em memória e hash determinístico desse
   manifesto, incluindo identidade da entrada, perfil, limites e contagens.
 - Testes offline com dados sintéticos e workflow de testes no GitHub Actions.
+- Execução validada com o CSV nacional real de agosto de 2025: 594.309 linhas
+  lidas e 1.842 detecções selecionadas, sem rejeições ou IDs selecionados repetidos.
+  Os hashes e comandos estão em [validação real](docs/VALIDACAO_REAL.md).
 
 A interface interativa, mapas, agregações por município ou dia, banco persistente,
 API web, coleta HTTP e hospedagem permanecem planejados. O SQLite atual serve
@@ -205,12 +208,14 @@ coordenadas. A assinatura usada para classificar repetições preserva os valore
 decimais sem arredondar e sem depender do contexto global de `Decimal`.
 As [regras de identidade](docs/DADOS.md#ids-repetidos-e-conflitos) ainda se
 referem apenas aos campos preservados em `Foco`.
-Não há medição de RAM ou desempenho com o arquivo nacional, quota para o SQLite
+Não há avaliação sistemática de RAM ou desempenho com o arquivo nacional, quota para o SQLite
 temporário nem controle global de execuções concorrentes.
 
-Os próximos passos são conferir o
-contrato com o arquivo real e a metodologia da fonte, registrar melhor a revisão
-das regras e só então produzir agregações e a interface interativa. As condições
+O CSV real já passou pelo leitor e pela execução com controle de IDs na
+[validação registrada](docs/VALIDACAO_REAL.md). O próximo passo é preservar os
+campos municipais e produzir agregações por dia UTC e município, mantendo
+visíveis os dados ausentes e as limitações da fonte. Ainda falta aprofundar a
+verificação de metodologia e registrar melhor a revisão das regras. As condições
 de redistribuição de dados reais ainda precisam ser confirmadas. A
 [procedência e as referências consultadas](docs/DADOS.md#procedência-e-condições-de-uso)
 estão centralizadas no contrato de dados.
