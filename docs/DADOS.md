@@ -2,8 +2,8 @@
 
 Este documento descreve o comportamento de [leitor.py](../src/rastro/leitor.py),
 [snapshot.py](../src/rastro/snapshot.py) e [execucao.py](../src/rastro/execucao.py),
-com referência nos [testes existentes](../testes). A validação usa dados
-sintéticos; o arquivo nacional real ainda não foi processado nesta revisão.
+com referência nos [testes existentes](../testes). A validação inclui dados
+sintéticos e uma [execução registrada com o CSV nacional real de agosto de 2025](VALIDACAO_REAL.md).
 Os comandos completos e as saídas da fixture estão no [README](../README.md).
 
 ## Pergunta e recorte
@@ -313,13 +313,18 @@ distintas, e nenhuma substitui as demais.
 
 ## Procedência e condições de uso
 
-Consulta das referências oficiais em 6 de outubro de 2026, sem baixar o CSV
-nacional. A fonte prevista é o [Programa Queimadas do INPE](https://data.inpe.br/queimadas/dados-abertos/),
+As referências oficiais foram consultadas inicialmente em 6 de outubro de 2026.
+Em 9 de outubro de 2026 (UTC), o CSV nacional de agosto de 2025 foi baixado e
+processado na revisão `7b024e1e77dee230236b9cd8330ef7b12b1ebf83`, com reprodução
+local de hashes e contagens. O registro está em [VALIDACAO_REAL.md](VALIDACAO_REAL.md).
+A fonte é o [Programa Queimadas do INPE](https://data.inpe.br/queimadas/dados-abertos/),
 que disponibiliza CSVs de focos. O
 [índice mensal do Brasil](https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/mensal/Brasil/)
 lista [focos_mensal_br_202508.csv](https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/mensal/Brasil/focos_mensal_br_202508.csv),
-candidato à integração de agosto de 2025. A existência na listagem não confirma
-cabeçalho, unidades, completude, IDs, CRS ou compatibilidade com este parser.
+usado na validação de agosto de 2025. Para os bytes registrados, o cabeçalho
+é compatível e a execução terminou sem rejeições ou IDs selecionados repetidos.
+Isso não confirma unidades, completude da cobertura, estabilidade dos IDs,
+CRS ou plausibilidade científica de todos os campos.
 Datas da listagem não são tratadas como datas de publicação original.
 
 A [FAQ do INPE, itens 3, 5 e 36](https://data.inpe.br/queimadas/faq/) confirma
@@ -337,8 +342,9 @@ snapshots, manifestos e registros salvos pelo exemplo. Também exclui `.venv/`,
 (com exceção de `.env.example`). O SQLite temporário usa a pasta temporária
 do sistema, fora dos artefatos versionados; a fixture permanece no Git.
 
-Antes da análise real, falta conferir o contrato e a metodologia com a fonte,
-avaliar a estabilidade dos IDs, registrar melhor
+O arquivo real já foi processado com o recorte e os limites documentados.
+Para avançar na análise, falta aprofundar a conferência de metodologia e unidades
+com a fonte, avaliar a estabilidade dos IDs, registrar melhor
 a revisão das regras e medir recursos e desempenho. Agregações, persistência
 e interface ainda são etapas futuras. O comportamento atual não determina
 a edição da malha municipal usada pela fonte nem responde à pergunta científica.
