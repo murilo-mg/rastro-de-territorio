@@ -64,7 +64,7 @@ def _artefatos(resultado):
     if _hash_manifesto(resultado.manifesto) != resultado.execucao_sha256:
         raise ValueError("Manifesto alterado após a execução")
     agregacoes = resultado.manifesto["resultado"]["agregacoes"]
-    return {
+    artefatos = {
         "manifesto.json": _json_bytes({
             "execucao_sha256": resultado.execucao_sha256,
             "manifesto": resultado.manifesto,
@@ -80,6 +80,21 @@ def _artefatos(resultado):
              for x in agregacoes["por_municipio"]),
         ),
     }
+    if resultado.manifesto["versao_manifesto_execucao"] == 3:
+        artefatos["por_municipio_dia.csv"] = _csv_bytes(
+            ["municipio_id", "dia_utc", "deteccoes"],
+            ((g["municipio_id"] or "", dia["dia_utc"], g["deteccoes_por_dia"][i])
+             for g in agregacoes["por_municipio_dia_utc"]
+             for i, dia in enumerate(agregacoes["por_dia_utc"])),
+        )
+        conferidos = resultado.manifesto["resultado"]["conferencia_municipal"]["por_municipio"]
+        campos_nomes = ["nomes_iguais", "nomes_equivalentes", "nomes_divergentes", "nomes_sem_referencia"]
+        artefatos["conferencia_municipal.csv"] = _csv_bytes(
+            ["municipio_id", "nome_referencia", "situacao_codigo", *[k + "_json" for k in campos_nomes]],
+            ((g["municipio_id"] or "", g["nome_referencia"] or "", g["situacao_codigo"],
+              *[json.dumps(g[k], ensure_ascii=False) for k in campos_nomes]) for g in conferidos),
+        )
+    return artefatos
 
 
 def _verificar_existente(diretorio, esperados):
@@ -108,7 +123,7 @@ def _verificar_existente(diretorio, esperados):
 def exportar_resultado(resultado, destino=Path("dados/resultados")):
     """Retorna (diretório, reutilizado); preserva o contexto da primeira publicação.
 
-    Os três artefatos determinísticos precisam coincidir byte a byte para
+    Os artefatos determinísticos precisam coincidir byte a byte para
     reutilizar um diretório. Nenhum arquivo divergente é substituído.
     """
     esperados = _artefatos(resultado)

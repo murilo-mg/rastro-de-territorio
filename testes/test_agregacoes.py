@@ -90,7 +90,26 @@ class TestAgregacoes(unittest.TestCase):
         self.assertEqual(len(r.agregacoes["por_dia_utc"]), 31)
         self.assertTrue(all(d["deteccoes"] == 0 for d in r.agregacoes["por_dia_utc"]))
         self.assertEqual(r.agregacoes["por_municipio"], [])
+        self.assertEqual(r.agregacoes["por_municipio_dia_utc"], [])
         self.assertEqual(r.agregacoes["municipios_com_codigo"], 0)
+
+    def test_matriz_preserva_dias_zero_e_grupo_sem_codigo(self):
+        r = self.executar([
+            exemplo(id="a", municipio_id="1300144", data_hora_gmt="2025-08-01T00:00:00Z"),
+            exemplo(id="b", municipio_id="1300144", data_hora_gmt="2025-08-31T23:59:59Z"),
+            exemplo(id="c", municipio_id="1302603", data_hora_gmt="2025-08-02T00:30:00+01:00"),
+            exemplo(id="d", municipio_id="", data_hora_gmt="2025-08-03T00:00:00Z"),
+        ])
+        a = r.agregacoes
+        matriz = a["por_municipio_dia_utc"]
+        self.assertEqual([g["municipio_id"] for g in matriz], ["1300144", "1302603", None])
+        self.assertEqual(matriz[0]["deteccoes_por_dia"], [1] + [0] * 29 + [1])
+        self.assertEqual(matriz[1]["deteccoes_por_dia"], [1] + [0] * 30)
+        self.assertEqual(matriz[2]["deteccoes_por_dia"], [0, 0, 1] + [0] * 28)
+        for linha, grupo in zip(matriz, a["por_municipio"]):
+            self.assertEqual(sum(linha["deteccoes_por_dia"]), grupo["deteccoes"])
+        for i, dia in enumerate(a["por_dia_utc"]):
+            self.assertEqual(sum(g["deteccoes_por_dia"][i] for g in matriz), dia["deteccoes"])
 
     def test_agregacoes_independem_da_ordem_da_entrada(self):
         linhas = [exemplo(id="a", municipio="Manaus"), exemplo(id="b", municipio="MANAUS"),

@@ -81,6 +81,9 @@ Código vazio vira `None`; código malformado ou com prefixo de outra UF vira
 aparado e preservado com maiúsculas, acentos e grafia originais; vazio vira `None`.
 O nome não é usado para inferir um código ausente. Os valores brutos originais
 continuam preservados no snapshot, inclusive códigos que não foram aceitos.
+Nas regras 4, a execução acrescenta uma comparação cadastral separada contra
+a DTB 2025 preservada. Essa comparação não altera a classificação do leitor,
+os códigos aceitos ou os nomes originais e não testa pontos em polígonos.
 
 `data_hora_gmt` precisa conter data e hora com segundos. São aceitos separador
 espaço ou `T`, fração de segundo opcional e offset `Z` ou `±HH:MM`. Sem offset,
@@ -319,14 +322,17 @@ persistente. `exportar_resultado` publica o resultado; o
 
 O manifesto de execução contém:
 
-- `versao_manifesto_execucao = 2` e `versao_regras = 3`.
+- `versao_manifesto_execucao = 3` e `versao_regras = 4`.
 - `snapshot`: SHA-256 e tamanho da entrada.
 - `recorte`: estado, satélite, início inclusivo, fim exclusivo e fuso UTC da agregação.
 - `perfil` e `limites`: os seis limites efetivos do leitor.
 - `politica_identidade`: campo `source_id`, duplicata como erro e intenção
   de distinguir conteúdo (`distingue_conteudo = true`, sujeita às limitações acima).
+- `referencia_municipal`: origem IBGE, edição 2025, data-base 31/12/2025,
+  data de acesso, arquivos/hashes e regra explícita de normalização de nomes.
 - `resultado`: IDs selecionados únicos, cinco contagens do resumo e as
-  agregações completas, incluindo tabelas, ausências e problemas por campo.
+  agregações versão 2, incluindo matriz município × dia, ausências,
+  problemas por campo e conferência municipal versão 1.
 
 `execucao_sha256` é o SHA-256 do manifesto serializado em JSON com
 `ensure_ascii=True`, `sort_keys=True`, `separators=(",", ":")`, codificado
@@ -354,7 +360,8 @@ O manifesto inclui o recorte explícito, mas não commit, versão do Python ou
 hash do código. A versão das regras é uma constante manual. Assim, igualdade
 de `execucao_sha256` não comprova que dois códigos diferentes executaram o
 mesmo processamento nem certifica igualdade de todos os focos interpretados.
-A comparação após reexecução confere os três artefatos determinísticos.
+A comparação após reexecução confere os cinco artefatos determinísticos
+das regras 4 (três nas regras 3).
 Também existe leitura independente por `verificar_resultado(diretorio)`:
 ela valida os arquivos exportados sem reler ou reexecutar o snapshot.
 
@@ -371,14 +378,20 @@ raiz de cópias. O padrão de saída é `dados/resultados/<execucao_sha256>/`.
 Os erros de argumentos, leitura, identidade ou publicação terminam com código
 2 e mensagem em stderr; stdout só recebe o resumo após a conclusão.
 
-O diretório publicado contém `manifesto.json` (manifesto e hash),
-`por_dia.csv`, `por_municipio.csv` e `contexto.json`. CSVs são UTF-8 com LF,
+O diretório das regras 4 contém `manifesto.json` (manifesto e hash),
+`por_dia.csv`, `por_municipio.csv`, `por_municipio_dia.csv`,
+`conferencia_municipal.csv` e `contexto.json`. CSVs são UTF-8 com LF,
 vírgula e cabeçalho. `nomes_json` é uma lista JSON dentro da célula CSV,
 preservando aspas, vírgulas, acentos e todos os nomes distintos do grupo.
 O código ausente é vazio no CSV e `null` no JSON. Os CSVs contêm agregações,
 não a lista das observações selecionadas.
+O CSV diário municipal tem exatamente uma linha por grupo observado e dia,
+incluindo zeros. O CSV de conferência contém código, nome cadastral, situação
+do código e quatro listas JSON de nomes: iguais, equivalentes após normalização,
+divergentes ou sem referência. As duas conferências de divergência de nomes
+(entre variantes da fonte e contra o IBGE) permanecem distintas.
 
-A publicação usa trava POSIX não bloqueante na raiz de saída, grava os quatro
+A publicação usa trava POSIX não bloqueante na raiz de saída, grava os seis
 arquivos em pasta temporária, executa `fsync` nos arquivos e renomeia a pasta
 completa. Falhas normais removem o temporário; interrupção abrupta pode deixar
 `.tmp-*`. Não há `fsync` dos diretórios, quota da exportação ou garantia de
@@ -386,7 +399,7 @@ durabilidade após queda de energia. A trava coordena publicações na mesma rai
 não limita execuções simultâneas nem gravações externas não cooperantes.
 
 Ao encontrar o mesmo resultado, a exportação compara manifesto e CSVs byte
-a byte e exige os quatro arquivos esperados. Uma divergência ou pasta
+a byte e exige exatamente os arquivos esperados da versão. Uma divergência ou pasta
 incompleta é recusada, sem substituir arquivos. O contexto inicial é preservado
 e conferido apenas quanto ao formato básico; não é autenticado nem incluído
 no hash da execução. Links simbólicos no destino direto e nos arquivos
@@ -398,17 +411,20 @@ não muda de formato; os novos resultados ficam em outro hash de execução.
 
 ## Verificação independente e caderno local
 
-`rastro.resultado.verificar_resultado()` aceita exatamente `manifesto.json`,
-`por_dia.csv`, `por_municipio.csv` e `contexto.json`. A pasta pode ter outro
-nome: a identidade é lida do manifesto. São aceitos apenas manifesto 2,
-regras 3, agregações 1, recorte atual e perfis com os limites implementados.
-Versões futuras ou formatos históricos são recusados explicitamente.
+`rastro.resultado.verificar_resultado()` aceita duas combinações: manifesto
+2/regras 3/agregações 1 com quatro arquivos, e manifesto 3/regras 4/agregações
+2 com seis arquivos. A pasta pode ter outro nome: a identidade é lida do
+manifesto. O recorte e os perfis precisam corresponder aos implementados.
+Outras versões, incluindo manifesto 1, são recusadas. A leitura histórica
+não modifica resultados nem cria matriz ou conferência retroativamente.
 
 O verificador confere estrutura, tipos, limites das contagens, SHA-256
 canônico, igualdade entre IDs e selecionadas, partição das linhas lidas,
 31 datas ordenadas, somas diárias e municipais, códigos únicos e ordenados,
-nomes, ausências e problemas por campo. Reconstitui os três artefatos
-determinísticos e exige igualdade byte a byte. Até uma mudança de formatação
+nomes, ausências e problemas por campo. Nas regras 4, confere também códigos
+e dimensão da matriz, somas de linhas/colunas e identidade da referência;
+recalcula a conferência cadastral a partir dos nomes preservados. Reconstitui
+todos os artefatos determinísticos da versão e exige igualdade byte a byte. Até uma mudança de formatação
 nos JSON/CSVs determinísticos é recusada. O contexto recebe validação de
 estrutura e tipos, mas continua fora do hash e sem autenticação.
 
@@ -427,7 +443,8 @@ validar a associação de cada observação ao município sem reprocessar a entr
 `rastro.caderno.gerar_caderno()` verifica a exportação e gera um HTML completo
 fora da pasta original. A apresentação não altera o manifesto, o hash da
 execução ou as versões das regras. O formato visual tem versão própria,
-inicialmente 1. Mesmos quatro arquivos e gerador produzem os mesmos bytes;
+atualmente 2, salvo por padrão em `dados/cadernos/v2/`. Mesmos arquivos
+exportados e gerador produzem os mesmos bytes;
 mudanças de contexto alteram o HTML mesmo sem alterar o hash da execução.
 
 A saída usa arquivo temporário no destino, `fsync` do arquivo e criação de
@@ -442,11 +459,17 @@ deixar `.rastro-caderno-*`.
 O HTML carrega todos os grupos em memória, com limite de 10.000 grupos,
 e contém a tabela completa também sem JavaScript. Há busca por código/nome
 e ordenação, série diária com origem em zero e tabela de valores exatos.
-O gráfico diário e os indicadores gerais não mudam com a busca municipal:
-as tabelas exportadas são marginais e não contêm o cruzamento município × dia.
+O gráfico geral e os indicadores gerais não mudam com a busca municipal.
+Nas regras 4, controles próprios selecionam até três grupos para um segundo
+gráfico baseado na matriz município × dia, com eixo comum começando em zero.
+O resumo mostra total, participação no recorte, dias com detecções, máximo
+diário e todas as datas UTC empatadas no máximo. A matriz completa permanece
+consultável sem JavaScript. Resultados históricos mostram a indisponibilidade
+desse cruzamento explicitamente.
 Percentuais são participações nas detecções selecionadas; não são taxas por
-área ou população. Nomes não são convertidos em geometrias ou validados contra
-cadastro territorial. O grupo sem código não representa um único município.
+área ou população. Nomes não são convertidos em geometrias. A conferência
+cadastral separa igualdade literal de equivalência normalizada, sem corrigir
+a fonte. O grupo sem código não representa um único município.
 
 Nomes são escapados no HTML e no JSON embutido; a interação escreve texto
 com `textContent`. Uma CSP permite apenas o script e estilo gerados por hash
@@ -454,6 +477,24 @@ e bloqueia conexões da página. O caderno não usa dependências externas,
 armazenamento de navegação ou servidor. Isso não autentica um HTML alterado
 depois de gerado. A fixture conhecida é reconhecida pelo hash; outras entradas
 sintéticas não são detectadas automaticamente. Detalhes em [CADERNO.md](CADERNO.md).
+
+## Referência municipal preservada
+
+`referencias/ibge/dtb2025/` versiona o ODS municipal original (206.091 bytes),
+o CSV com 62 municípios do Amazonas e o manifesto. O hash do manifesto é
+fixado em `territorio.py`; hashes de ODS e CSV são conferidos antes de usar
+a referência. Não há consulta HTTP durante a execução. A receita reproduz
+o CSV diretamente do ODS, sem bibliotecas externas de planilhas.
+
+A referência é IBGE DTB 2025, data-base 31/12/2025, posterior ao recorte de
+agosto de 2025. A comparação não identifica a edição territorial usada pelo
+INPE nem valida coordenadas contra limites espaciais. Código desconhecido
+permanece selecionado, com diagnóstico; nomes não inferem códigos.
+
+Nomes iguais são separados dos equivalentes após NFKD, retirada de marcas
+combinantes, `casefold` e consolidação de espaços. Pontuação não é retirada.
+Nomes originais, variantes e ausências permanecem visíveis. Origem, hashes,
+reprodução e limites estão em [REFERENCIA_MUNICIPAL.md](REFERENCIA_MUNICIPAL.md).
 
 ## Procedência e condições de uso
 
@@ -487,10 +528,10 @@ snapshots, manifestos e registros salvos pelo exemplo. Também exclui `.venv/`,
 do sistema, fora dos artefatos versionados; a fixture permanece no Git.
 
 O arquivo real já foi processado com o recorte e os limites documentados.
-As agregações por dia e código municipal, exportação, verificação independente
-e interface HTML local estão implementadas.
+As agregações por dia e código municipal, exportação, verificação independente,
+matriz município × dia, conferência cadastral e interface HTML local estão implementadas.
 Para avançar na análise, falta aprofundar a conferência de metodologia e unidades
 com a fonte, avaliar a estabilidade dos IDs e medir recursos e desempenho de
-forma sistemática. Persistência em banco, cruzamento município × dia, mapa e
+forma sistemática. Persistência em banco, outros períodos, mapa e
 interface web hospedada ainda são etapas futuras.
 O comportamento atual não determina a edição da malha municipal usada pela fonte.

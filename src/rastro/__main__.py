@@ -21,7 +21,7 @@ def _consultar(argv):
         "Confere a consistência interna de uma exportação local."
         if comando == "verificar" else "Gera um caderno HTML offline de uma exportação verificada."
     ))
-    parser.add_argument("resultado", type=Path, help="Pasta com os quatro arquivos exportados")
+    parser.add_argument("resultado", type=Path, help="Pasta completa de um resultado exportado")
     if comando == "verificar":
         parser.add_argument("--json", action="store_true", help="Resumo verificável por outro programa")
     else:
@@ -44,7 +44,13 @@ def _consultar(argv):
         "municipios_com_codigo": r.agregacoes["municipios_com_codigo"],
         "sem_municipio_id": r.agregacoes["sem_municipio_id"],
         "snapshot_reprocessado": False, "contexto_autenticado": False,
+        "versao_manifesto": r.manifesto["versao_manifesto_execucao"],
+        "matriz_municipal_disponivel": "por_municipio_dia_utc" in r.agregacoes,
     }
+    if "conferencia_municipal" in r.manifesto["resultado"]:
+        c = r.manifesto["resultado"]["conferencia_municipal"]
+        resumo.update({k: c[k] for k in ("codigos_encontrados", "codigos_nao_encontrados",
+                                         "grupos_com_nomes_divergentes")})
     if args.json:
         print(json.dumps(resumo, ensure_ascii=True, sort_keys=True))
     else:
@@ -90,6 +96,11 @@ def main(argv=None):
     print("dias_utc:", len(resultado.agregacoes["por_dia_utc"]))
     for campo in ("municipios_com_codigo", "sem_municipio_id", "municipios_com_nomes_divergentes"):
         print(f"{campo}: {resultado.agregacoes[campo]}")
+    print("grupos_na_matriz_municipal:", len(resultado.agregacoes["por_municipio_dia_utc"]))
+    print("referencia_municipal:", "IBGE DTB 2025; data-base 2025-12-31")
+    conferencia = resultado.manifesto["resultado"]["conferencia_municipal"]
+    for campo in ("codigos_encontrados", "codigos_nao_encontrados", "grupos_com_nomes_divergentes"):
+        print(f"{campo}: {conferencia[campo]}")
     print("exportacao:", "reutilizada" if reutilizado else "criada")
     print("diretorio_resultado:", saida)
 
