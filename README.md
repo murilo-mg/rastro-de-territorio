@@ -3,7 +3,8 @@
 Caderno de dados ambientais do Amazonas, desenvolvido por Murilo da Mota
 Gonçalves, estudante de Ciência da Computação na UFAM. O projeto torna os
 resultados exploráveis e registra a origem e as limitações de cada execução.
-A etapa atual roda no terminal, localmente, com orçamento zero.
+A execução roda no terminal e gera um caderno HTML para exploração local no
+navegador, com orçamento zero e sem servidor.
 
 ## Pergunta inicial
 
@@ -28,9 +29,11 @@ as regras e os limites dessa conclusão.
   divergentes e valores ausentes explícitos.
 - Manifesto determinístico que inclui recorte, regras, contagens e tabelas.
 - CLI que preserva ou reutiliza o snapshot e publica JSON e CSVs completos.
+- Verificação independente de resultados exportados, sem reler o CSV original.
+- Caderno HTML offline com série diária, busca municipal, diagnósticos e procedência.
 - Testes offline com dados sintéticos e execução registrada com o arquivo real.
 
-A interface interativa, mapa, API web, banco persistente, coletor HTTP e
+A interface local está disponível. Mapa, API web, banco persistente, coletor HTTP e
 hospedagem ainda estão planejados. O SQLite é temporário e serve ao controle
 de IDs e à acumulação das agregações. Não há dependência de pandas ou de banco externo.
 
@@ -164,15 +167,68 @@ PYTHONPATH=src python3 -m rastro.snapshot verificar dados/snapshots/82d677fe686d
 
 O comando simples do leitor não controla IDs repetidos nem gera agregações.
 
+## Verificar uma exportação existente
+
+O novo comando confere os quatro arquivos exportados, as versões suportadas,
+o hash canônico, as somas, o calendário e a correspondência dos CSVs:
+
+```bash
+PYTHONPATH=src python3 -m rastro verificar \
+  dados/resultados/e64d4e0ec72b9bf1e7e5bc5c718f7622e8357df2bdda479505474d5e8bce4f0c
+```
+
+Use `--json` para receber o resumo em JSON. A verificação não reprocessa o
+snapshot, não autentica a procedência e não certifica o contexto da primeira
+exportação. Ela aceita o formato de manifesto 2, regras 3 e agregações 1.
+Os resultados do combo anterior podem ser usados diretamente.
+
+## Abrir o caderno no navegador
+
+Após exportar o CSV real ou seu snapshot:
+
+```bash
+PYTHONPATH=src python3 -m rastro caderno \
+  dados/resultados/e64d4e0ec72b9bf1e7e5bc5c718f7622e8357df2bdda479505474d5e8bce4f0c &&
+xdg-open dados/cadernos/e64d4e0ec72b9bf1e7e5bc5c718f7622e8357df2bdda479505474d5e8bce4f0c.html
+```
+
+Para usar somente a fixture, sem baixar dados reais:
+
+```bash
+PYTHONPATH=src python3 -m rastro --csv testes/fixtures/focos_sinteticos.csv &&
+PYTHONPATH=src python3 -m rastro caderno \
+  dados/resultados/83d3373305d1877832a0309034342df9d6da6f41b8048e542330bd587c52e8bd &&
+xdg-open dados/cadernos/83d3373305d1877832a0309034342df9d6da6f41b8048e542330bd587c52e8bd.html
+```
+
+Também é possível abrir o arquivo com duplo clique. `xdg-open` precisa de
+uma sessão gráfica; não é requisito para gerar o HTML. `--saida caminho.html`
+permite escolher outro arquivo, sempre fora da pasta dos quatro artefatos.
+Uma saída diferente já existente não é sobrescrita; escolha outro nome.
+
+O caderno mostra os 31 dias, a tabela municipal completa, todos os nomes de
+cada grupo, ausências, problemas e os hashes. A busca aceita nomes sem acento
+e códigos; os percentuais continuam usando o total selecionado. Buscar um
+município filtra apenas a tabela: a exportação ainda não possui o cruzamento
+município × dia. Sem JavaScript, as tabelas e o gráfico permanecem disponíveis.
+
+O HTML funciona sem servidor, pacotes de frontend ou requisições de rede.
+Os links para referências só usam internet quando abertos. A impressão inclui
+os detalhes e mantém a busca atual. A fixture oficial do repositório é
+identificada explicitamente como sintética pelo hash do snapshot.
+
+Consulte [CADERNO.md](docs/CADERNO.md) para arquitetura, limites e validação.
+
 ## Testes e próximos passos
 
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s testes -p 'test_*.py' -v
 ```
 
-Os 103 testes passaram com Python 3.12.14 no Linux. Cobrem limites, snapshots,
+Os 143 testes passaram com Python 3.12.14 no Linux. Cobrem limites, snapshots,
 identidade decimal e municipal, fusos, dias vazios, nomes divergentes, ausências,
-exportação, falhas e CLI. O workflow executa os testes offline; não baixa dados reais.
+exportação, verificação de resultados, HTML, falhas e CLI. O workflow executa
+os testes offline; não baixa dados reais nem instala navegador.
 
 As tabelas do CSV real foram comparadas com uma contagem independente do arquivo:
 31 dias, 50 códigos e soma 1.842 em ambas. A execução também identificou
@@ -180,7 +236,7 @@ As tabelas do CSV real foram comparadas com uma contagem independente do arquivo
 de ausência, sem gerar problemas opcionais.
 
 Os próximos passos são conferir a referência territorial e as condições de uso
-da fonte, explorar visualmente as tabelas e definir a primeira interface do
-caderno. Ainda faltam avaliação sistemática de recursos, quota do SQLite
+da fonte e avaliar a exploração do caderno com usuários. Ainda faltam
+cruzamento município × dia, avaliação sistemática de recursos, quota do SQLite
 temporário e controle global de execuções concorrentes. Detalhes de validação,
 identidade e interpretação estão em [docs/DADOS.md](docs/DADOS.md).
