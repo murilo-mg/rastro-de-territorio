@@ -27,9 +27,28 @@ class ResultadoExecucao:
 
 
 def _decimal_canonico(valor):
+    """Identidade numérica exata, sem aritmética do contexto Decimal.
+
+    Mantém o coeficiente e o expoente compactos, retirando apenas zeros
+    finais do coeficiente. Assim, 1, 1.00 e 10e-1 têm a mesma identidade,
+    sem arredondar dígitos nem expandir expoentes extremos. Todos os zeros,
+    inclusive -0, representam o mesmo valor; None permanece ausente.
+    """
     if valor is None:
         return None
-    return str(valor.normalize())
+    if not valor.is_finite():
+        raise ValueError("A assinatura exige um Decimal finito")
+
+    sinal, digitos, expoente = valor.as_tuple()
+    if not any(digitos):
+        return "0:0:0"
+
+    fim = len(digitos)
+    while digitos[fim - 1] == 0:
+        fim -= 1
+    expoente += len(digitos) - fim
+    coeficiente = "".join(str(digito) for digito in digitos[:fim])
+    return f"{sinal}:{coeficiente}:{expoente}"
 
 
 def _assinatura_foco(foco: Foco) -> bytes:
@@ -71,7 +90,7 @@ def _criar_manifesto_execucao(
 ):
     return {
         "versao_manifesto_execucao": 1,
-        "versao_regras": 1,
+        "versao_regras": 2,
         "snapshot": {
             "sha256": snapshot.sha256,
             "bytes": snapshot.bytes,

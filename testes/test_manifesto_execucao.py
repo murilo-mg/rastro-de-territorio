@@ -35,7 +35,7 @@ class TestManifestoExecucao(unittest.TestCase):
             resultado.manifesto["versao_manifesto_execucao"],
             1,
         )
-        self.assertEqual(resultado.manifesto["versao_regras"], 1)
+        self.assertEqual(resultado.manifesto["versao_regras"], 2)
 
         self.assertEqual(
             resultado.manifesto["snapshot"],

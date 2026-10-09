@@ -138,15 +138,25 @@ Campos descartados, como município e bioma, e a lista de problemas opcionais
 não participam. Portanto, textos distintos podem produzir a mesma assinatura,
 inclusive um opcional inválido e um ausente, pois ambos viram `None`.
 
-Há uma limitação adicional confirmada na revisão: a assinatura usa
-`Decimal.normalize()`, que depende do contexto decimal e pode arredondar.
-Por exemplo, precipitações `1.12345678901234567890123456781` e
-`1.12345678901234567890123456782` são valores interpretados diferentes, mas
-geram a mesma assinatura no contexto padrão. Isso pode classificar um conflito
-como `mesmo conteúdo interpretado`; a repetição ainda é recusada.
-Um opcional finito extremo, como precipitação `1e1000000`, é aceito pelo leitor,
-mas provoca `decimal.Overflow` ao gerar a assinatura. Essa falha ainda não tem
-tratamento específico na API. A revisão de documentação não altera esses comportamentos.
+Na versão 2 das regras, a assinatura decimal usa sinal, dígitos e expoente
+obtidos por `Decimal.as_tuple()`, sem operações de arredondamento do contexto.
+Retira apenas zeros finais do coeficiente e ajusta o expoente com inteiros.
+Assim, `1`, `1.00` e `10e-1` são equivalentes; valores que diferem além de
+28 casas significativas permanecem diferentes. Todos os zeros, inclusive
+`-0`, têm a mesma representação numérica; `None` continua distinto de zero.
+
+O coeficiente e o expoente ficam compactos: um valor finito como `1e1000000`
+não é expandido em um milhão de caracteres nem causa `decimal.Overflow`
+na assinatura. A classificação é independente da precisão, dos limites de
+expoente e das armadilhas de arredondamento do contexto decimal. Isso não
+valida a plausibilidade científica de valores extremos; as regras do leitor
+e a necessidade de conferir unidades e faixas com a fonte permanecem.
+
+A correção substitui o uso anterior de `Decimal.normalize()`, que podia
+arredondar valores diferentes ou falhar com expoentes extremos. A versão das
+regras passou de 1 para 2, alterando a identidade da execução mesmo quando
+as contagens são iguais. Registros antigos devem ser reproduzidos com a
+revisão original, sem reescrever seu hash ou sua versão.
 
 ## Limites implementados
 
@@ -264,7 +274,7 @@ salva um registro JSON com o manifesto e contexto adicional.
 
 O manifesto de execução contém:
 
-- `versao_manifesto_execucao = 1` e `versao_regras = 1`.
+- `versao_manifesto_execucao = 1` e `versao_regras = 2`.
 - `snapshot`: SHA-256 e tamanho da entrada.
 - `perfil` e `limites`: os seis limites efetivos do leitor.
 - `politica_identidade`: campo `source_id`, duplicata como erro e intenção
@@ -328,7 +338,7 @@ snapshots, manifestos e registros salvos pelo exemplo. Também exclui `.venv/`,
 do sistema, fora dos artefatos versionados; a fixture permanece no Git.
 
 Antes da análise real, falta conferir o contrato e a metodologia com a fonte,
-revisar a assinatura decimal, avaliar a estabilidade dos IDs, registrar melhor
+avaliar a estabilidade dos IDs, registrar melhor
 a revisão das regras e medir recursos e desempenho. Agregações, persistência
 e interface ainda são etapas futuras. O comportamento atual não determina
 a edição da malha municipal usada pela fonte nem responde à pergunta científica.

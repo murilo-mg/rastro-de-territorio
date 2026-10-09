@@ -164,20 +164,20 @@ PY
 Saída obtida com a fixture e o perfil `fixture`:
 
 ```text
-execucao_sha256: 4fbc590deb678843e166398c7ff4f4c3c718d3e236cf602026e0b0b2f155152c
+execucao_sha256: 2f2a8492456c5572b10e0d67c59ea4420625d10f557cfb90ef2009a94c459b5c
 ids_selecionados_unicos: 2
 lidas: 5
 selecionadas: 2
 fora_do_recorte: 3
 rejeitadas: 0
 problemas_opcionais: 0
-registro: dados/execucoes/4fbc590deb678843e166398c7ff4f4c3c718d3e236cf602026e0b0b2f155152c.json
+registro: dados/execucoes/2f2a8492456c5572b10e0d67c59ea4420625d10f557cfb90ef2009a94c459b5c.json
 ```
 
 Reexecutar o exemplo mantém esse hash e regrava o registro no mesmo caminho.
 Guarde os dois arquivos do snapshot, o registro de execução, o código da revisão
 usada e eventuais alterações locais de código. O manifesto não registra commit,
-versão do Python ou os valores explícitos do recorte; `versao_regras = 1`
+versão do Python ou os valores explícitos do recorte; `versao_regras = 2`
 precisa ser interpretada junto ao código. Não existe comando de importação ou
 verificação de um manifesto de execução salvo. Veja
 [identidade e reprodução](docs/DADOS.md#execução-e-manifesto).
@@ -193,7 +193,7 @@ não é removido silenciosamente nem contado em uma quarta categoria.
 PYTHONPATH=src python3 -m unittest discover -s testes -p 'test_*.py' -v
 ```
 
-Na revisão desta documentação, os 70 testes passaram com Python 3.12.3 no Linux.
+Na correção da assinatura decimal, os 78 testes passaram com Python 3.12.14 no Linux.
 O [workflow](.github/workflows/testes.yml) executa a mesma descoberta de testes
 em pushes e pull requests, com Python 3.12 no Ubuntu e limite de cinco minutos
 para o job. Os testes não baixam dados ambientais.
@@ -201,12 +201,14 @@ para o job. Os testes não baixam dados ambientais.
 ## Limitações e próximos passos
 
 O leitor não valida UUID, estabilidade de IDs, CRS ou coerência territorial das
-coordenadas. A assinatura usada para classificar repetições tem
-[limitações conhecidas com decimais](docs/DADOS.md#ids-repetidos-e-conflitos).
+coordenadas. A assinatura usada para classificar repetições preserva os valores
+decimais sem arredondar e sem depender do contexto global de `Decimal`.
+As [regras de identidade](docs/DADOS.md#ids-repetidos-e-conflitos) ainda se
+referem apenas aos campos preservados em `Foco`.
 Não há medição de RAM ou desempenho com o arquivo nacional, quota para o SQLite
 temporário nem controle global de execuções concorrentes.
 
-Os próximos passos são revisar essas limitações de identidade, conferir o
+Os próximos passos são conferir o
 contrato com o arquivo real e a metodologia da fonte, registrar melhor a revisão
 das regras e só então produzir agregações e a interface interativa. As condições
 de redistribuição de dados reais ainda precisam ser confirmadas. A

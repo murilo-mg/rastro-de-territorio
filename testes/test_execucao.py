@@ -1,6 +1,7 @@
 import csv
 import tempfile
 import unittest
+from decimal import Inexact, Rounded, localcontext
 from pathlib import Path
 
 from rastro.execucao import ErroIdentidade, executar_snapshot
@@ -76,6 +77,88 @@ class TestExecucaoReproduzivel(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(ValueError, "Integridade inválida"):
+            executar_snapshot(snapshot.diretorio)
+
+    def test_decimais_distintos_apos_28_casas_sao_conflito(self):
+        snapshot = self.criar_snapshot_de_linhas([
+            exemplo(precipitacao="1.12345678901234567890123456781"),
+            exemplo(precipitacao="1.12345678901234567890123456782"),
+        ])
+        with self.assertRaisesRegex(ErroIdentidade, "conteúdo diferente"):
+            executar_snapshot(snapshot.diretorio)
+
+    def test_representacoes_decimais_equivalentes_sao_duplicata_identica(self):
+        for valor in ("1", "1.0", "1.000", "1e0", "10e-1"):
+            with self.subTest(valor=valor):
+                snapshot = self.criar_snapshot_de_linhas([
+                    exemplo(precipitacao="1.00"),
+                    exemplo(precipitacao=valor),
+                ])
+                with self.assertRaisesRegex(ErroIdentidade, "mesmo conteúdo interpretado"):
+                    executar_snapshot(snapshot.diretorio)
+
+    def test_classificacao_independe_da_precisao_do_contexto(self):
+        snapshot = self.criar_snapshot_de_linhas([
+            exemplo(precipitacao="1.12345678901234567890123456781"),
+            exemplo(precipitacao="1.12345678901234567890123456782"),
+        ])
+        for precisao in (3, 28, 60):
+            with self.subTest(precisao=precisao), localcontext() as contexto:
+                contexto.prec = precisao
+                contexto.traps[Inexact] = True
+                contexto.traps[Rounded] = True
+                with self.assertRaisesRegex(ErroIdentidade, "conteúdo diferente"):
+                    executar_snapshot(snapshot.diretorio)
+
+    def test_decimal_finito_com_expoente_extremo_nao_interrompe_execucao(self):
+        for valor in ("1e1000000", "1e-1000000"):
+            with self.subTest(valor=valor):
+                snapshot = self.criar_snapshot_de_linhas([exemplo(precipitacao=valor)])
+                resultado = executar_snapshot(snapshot.diretorio)
+                self.assertEqual(resultado.ids_selecionados_unicos, 1)
+
+    def test_equivalencia_com_expoentes_extremos_independe_dos_limites_do_contexto(self):
+        for primeiro, segundo in (("1e1000000", "10e999999"), ("1e-1000000", "10e-1000001")):
+            with self.subTest(primeiro=primeiro):
+                snapshot = self.criar_snapshot_de_linhas([
+                    exemplo(precipitacao=primeiro),
+                    exemplo(precipitacao=segundo),
+                ])
+                with localcontext() as contexto:
+                    contexto.prec = 3
+                    contexto.Emax = 9
+                    contexto.Emin = -9
+                    contexto.traps[Inexact] = True
+                    contexto.traps[Rounded] = True
+                    with self.assertRaisesRegex(ErroIdentidade, "mesmo conteúdo interpretado"):
+                        executar_snapshot(snapshot.diretorio)
+
+    def test_valores_extremos_diferentes_continuam_conflito(self):
+        for primeiro, segundo in (("1e1000000", "2e1000000"), ("1e-1000000", "2e-1000000")):
+            with self.subTest(primeiro=primeiro):
+                snapshot = self.criar_snapshot_de_linhas([
+                    exemplo(precipitacao=primeiro),
+                    exemplo(precipitacao=segundo),
+                ])
+                with self.assertRaisesRegex(ErroIdentidade, "conteúdo diferente"):
+                    executar_snapshot(snapshot.diretorio)
+
+    def test_zeros_de_sinais_e_escalas_diferentes_sao_equivalentes(self):
+        for valor in ("-0", "-0.000", "0e1000000", "-0e-1000000"):
+            with self.subTest(valor=valor):
+                snapshot = self.criar_snapshot_de_linhas([
+                    exemplo(precipitacao="0"),
+                    exemplo(precipitacao=valor),
+                ])
+                with self.assertRaisesRegex(ErroIdentidade, "mesmo conteúdo interpretado"):
+                    executar_snapshot(snapshot.diretorio)
+
+    def test_opcional_ausente_e_zero_continuam_diferentes(self):
+        snapshot = self.criar_snapshot_de_linhas([
+            exemplo(precipitacao=""),
+            exemplo(precipitacao="0"),
+        ])
+        with self.assertRaisesRegex(ErroIdentidade, "conteúdo diferente"):
             executar_snapshot(snapshot.diretorio)
 
 
